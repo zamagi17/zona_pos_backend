@@ -25,6 +25,12 @@ public class TransactionResponse {
     private Long shiftId;
     private Double subtotal;
     private Double discount;
+    private Double itemDiscountTotal;
+    private Double orderDiscount;
+    private String orderDiscountType;
+    private Double orderDiscountRate;
+    private String voucherCode;
+    private Double voucherDiscount;
     private Double tax;
     private Double grandTotal;
     private String status;
@@ -32,6 +38,8 @@ public class TransactionResponse {
     private Double paymentAmount;
     private Double changeAmount;
     private String paymentStatus;
+    private LocalDateTime dueDate;
     private LocalDateTime createdAt;
     private List<CartItemDto> items;
+    private List<PaymentResponse> payments;
 }

@@ -20,4 +20,6 @@ public class CustomerDto {
     private String phone;
     private String email;
     private LocalDateTime createdAt;
+    private Double totalReceivables;
+    private Long unpaidBillsCount;
 }

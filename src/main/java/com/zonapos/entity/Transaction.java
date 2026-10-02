@@ -47,6 +47,24 @@ public class Transaction {
     @Builder.Default
     private Double discount = 0.0;
 
+    @Column(name = "order_discount", nullable = false)
+    @Builder.Default
+    private Double orderDiscount = 0.0;
+
+    @Column(name = "order_discount_type", length = 20)
+    private String orderDiscountType; // PERCENT, FIXED
+
+    @Column(name = "order_discount_rate")
+    @Builder.Default
+    private Double orderDiscountRate = 0.0;
+
+    @Column(name = "voucher_code", length = 50)
+    private String voucherCode;
+
+    @Column(name = "voucher_discount", nullable = false)
+    @Builder.Default
+    private Double voucherDiscount = 0.0;
+
     @Column(nullable = false)
     @Builder.Default
     private Double tax = 0.0;
@@ -58,6 +76,9 @@ public class Transaction {
     @Column(nullable = false, length = 50)
     @Builder.Default
     private String status = "DRAFT"; // DRAFT, BOOKED, CONFIRMED, COMPLETED, CANCELED, REFUNDED
+
+    @Column(name = "due_date")
+    private LocalDateTime dueDate;
 
     @Column(name = "created_by", length = 100)
     private String createdBy;

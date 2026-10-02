@@ -1,0 +1,1308 @@
+================================================================================
+          DOKUMENTASI ARSITEKTUR DAN SISTEM KODE LENGKAP: ZONA POS UMKM
+================================================================================
+Versi Dokumen   : 1.1.0
+Tanggal Analisa : 1 Oktober 2026
+Target Sistem   : Zona POS Backend (Spring Boot) & Zona POS Frontend (React + Vite)
+Lisensi / Status: Private / Multi-Tenant Point of Sale System
+================================================================================
+
+DAFTAR ISI
+--------------------------------------------------------------------------------
+1. RINGKASAN SISTEM (SYSTEM OVERVIEW)
+2. TEKNOLOGI & DEPENDENSI (TECH STACK)
+3. STRUKTUR DIREKTORI PROYEK (PROJECT DIRECTORY TREE)
+4. ARSITEKTUR DATABASE & SKEMA RELASIONAL (DATABASE & ERD SCHEMA)
+5. KEAMANAN & AUTENTIKASI (SECURITY, JWT & RBAC)
+6. MODUL & ALUR BISNIS UTAMA (BUSINESS LOGIC & WORKFLOWS)
+   6.1. Multi-Tenancy & Multi-Outlet Management
+   6.2. Master Data (Kategori Hierarki, Satuan, Gudang Pusat)
+   6.3. Katalog Produk, Varian & Multi-Tier Pricing
+   6.4. Manajemen Stok Multi-Lokasi & Mutasi Atomik
+   6.5. Manajemen Shift Kasir & Rekonsiliasi Kas Laci Fisik
+   6.6. Modul Kasir POS (Pencarian Cepat, Hold, Recall, Multi-Payment)
+   6.7. Modul Refund & Restorasi Inventaris Otomatis
+   6.8. CRM / Manajemen Pelanggan
+   6.9. Dashboard Laporan Finansial & Analisa Laba Kotor (Gross Profit)
+   6.10. KLASTER 3: DISKON GLOBAL NOTA & KODE VOUCHER PROMOSI
+   6.11. KLASTER 4: HARDWARE & KUSTOMISASI STRUK BELANJA (58MM & 80MM)
+   6.12. KLASTER 5: LAPORAN & EKSPOR DATA AKUNTANSI (EXCEL & PDF)
+   6.13. KLASTER 6: MANAJEMEN PENGADAAN (SUPPLY CHAIN & SUPPLIER)
+         6.13.1. Master Data Supplier & Purchase Order (PO Bahan Baku/Barang)
+         6.13.2. Generator Cetak Barcode Code 128 & Price Tag Rak Toko
+7. SPESIFIKASI REST API ENDPOINT (LENGKAP)
+8. PANDUAN INSTALASI & MENJALANKAN SISTEM (RUN & SETUP GUIDE)
+9. AKUN DEMO BAWAAN (DEFAULT SEED CREDENTIALS)
+10. KATALOG FITUR LENGKAP & PANDUAN TEKNIS PEMAKAIAN (OPERATIONAL & CASHIER MANUAL)
+    10.1. Layar Kasir POS (Speed of Service, Hotkeys Keyboard & Scan Barcode)
+    10.2. Riwayat Transaksi Penjualan, Cetak Ulang Struk & Refund Otomatis
+    10.3. Katalog Produk, Manajemen Varian & Penetapan Harga Multi-Cabang
+    10.4. Master Data Mandiri (Kategori Hierarki, Satuan Unit & Gudang Pusat)
+    10.5. Manajemen Stok Multi-Lokasi, Mutasi Atomik & Audit Kartu Stok
+    10.6. Kontrol Shift Kasir & Rekonsiliasi Fisik Kas Laci (Cash Drawer)
+    10.7. Manajemen Pelanggan (CRM) & Histori Pembelian
+    10.8. Pengelolaan Multi-Cabang & Manajemen Akun Staf/Kasir
+    10.9. Laporan Omset, Laba Kotor (Gross Profit) & Analisa Margin
+    10.10. Pengaturan Identitas Toko & Kustomisasi Struk Thermal (58mm & 80mm)
+    10.11. Ekspor Laporan Finansial, Jurnal Transaksi & Rekap Shift (Excel & PDF)
+    10.12. Manajemen Master Supplier & Pencatatan Purchase Order Barang Masuk
+    10.13. Generator Cetak Label Barcode Code 128 & Price Tag Rak Minimarket
+    10.14. Manajemen Promosi & Voucher Diskon (Kupon Promo Toko)
+    10.15. Buku Register & Jurnal Pembelian (Rekapitulasi Purchase Order)
+================================================================================
+
+
+--------------------------------------------------------------------------------
+1. RINGKASAN SISTEM (SYSTEM OVERVIEW)
+--------------------------------------------------------------------------------
+Zona POS adalah aplikasi Point of Sale (Kasir) Multi-Tenant modern berbasis web
+yang dirancang untuk kebutuhan bisnis UMKM, kafe, retail, dan toko multi-cabang.
+Sistem ini memfasilitasi isolasi data antar tenant (bisnis), mendukung banyak
+cabang (outlet) dalam satu kepemilikan bisnis, serta memisahkan penyimpanan
+inventaris antara Gudang Pusat (Storage) dan Toko/Kasir (Outlet).
+
+Fitur unggulan:
+- Multi-Tenancy dengan isolasi tenant_id pada seluruh entitas bisnis.
+- Multi-Outlet & Multi-Storage: Dukungan banyak cabang dan gudang logistik.
+- Manajemen Shift Kasir Terintegrasi: Kontrol modal awal, pelacakan kas, serta
+  rekonsiliasi otomatis selisih kas (expected cash vs actual cash).
+- POS Cepat & Responsif: Pencarian nama/SKU/barcode scanner, hold & recall order,
+  serta dukungan multi-metode pembayaran (Cash, QRIS, Debit, Transfer Bank).
+- Restorasi Stok Otomatis saat Refund transaksi.
+- Laporan Keuangan Realtime: Omset kotor, omset bersih, HPP (Harga Pokok Penjualan),
+  serta Laba Kotor (Gross Profit) terhitung otomatis.
+- Audit Trail Stok & Harga: Setiap pergerakan stok dan perubahan harga tercatat
+  lengkap dengan identitas pengguna dan cap waktu.
+
+
+--------------------------------------------------------------------------------
+2. TEKNOLOGI & DEPENDENSI (TECH STACK)
+--------------------------------------------------------------------------------
+
+A. BACKEND (zona_pos_backend)
+- Bahasa / Runtime : Java 17 LTS
+- Framework Utama  : Spring Boot 3.2.5
+- Security Layer   : Spring Security 6 + BCrypt Password Encoder
+- Token Auth       : JSON Web Token (jjwt versi 0.11.5)
+- Database Driver  : PostgreSQL JDBC Driver (postgresql 42.x)
+- ORM / Data Layer : Spring Data JPA / Hibernate Core (PostgreSQL Dialect)
+- Schema Migration : Flyway Core 10.x (Migrations V1 & V2)
+- Audit Trail      : JaVers Spring Boot Starter SQL 7.4.0
+- Utility          : Project Lombok, Jakarta Validation (Hibernate Validator)
+- Server Port      : 8080 (Context Path: /api/v1)
+
+B. FRONTEND (zona_pos_frontend)
+- Runtime & Bundler: Node.js + Vite 8.3
+- UI Library       : React 19.2.8 + React DOM 19.2.8
+- Desain & Styling : Vanilla CSS (Modern Design System, CSS Variables, Glassmorphism,
+                     Dark Mode Palettes, Fluid Typography, Micro-animations)
+- Icon Pack        : Lucide React (v1.45.0)
+- Visual Effects   : Canvas Confetti (v1.9.4)
+- Linter           : Oxlint (v1.81.0)
+- State Management : React Context API (AuthContext, CartContext, ShiftContext)
+- API Client       : Native Fetch API wrapper dengan interceptor Authorization Bearer
+
+
+--------------------------------------------------------------------------------
+3. STRUKTUR DIREKTORI PROYEK (PROJECT DIRECTORY TREE)
+--------------------------------------------------------------------------------
+
+A. BACKEND STRUCTURE:
+zona_pos_backend/
+├── pom.xml                                   # Definisi Maven dependencies & plugins
+├── nb-configuration.xml                      # Konfigurasi IDE NetBeans
+├── start-backend.bat / start-backend.ps1     # Skrip otomatisasi peluncuran backend
+├── .gitignore                                # Konfigurasi git ignore lengkap
+├── rtk/                                      # Alat pembantu CLI Rust Token Killer
+├── ponytail/                                 # Ruleset / skill AI coding assistant
+└── src/
+    ├── test/java/com/zonapos/ZonaPosApplicationTests.java
+    └── main/
+        ├── resources/
+        │   ├── application.yml               # Konfigurasi port, DB, JWT, JPA, Flyway
+        │   └── db/migration/
+        │       ├── V1__init_schema.sql       # DDL 19 tabel relasional + foreign keys + index
+        │       └── V2__seed_initial_data.sql # DML data awal demo (roles, tenant, user, katalog)
+        └── java/com/zonapos/
+            ├── ZonaPosApplication.java       # Main entry point Spring Boot
+            ├── config/
+            │   ├── SecurityConfig.java       # Konfigurasi Spring Security, CORS, stateless filter
+            │   ├── JwtAuthenticationFilter.java # Filter HTTP interceptor token JWT
+            │   ├── JwtTokenProvider.java     # Generator & validator token JWT (role-based TTL)
+            │   └── JaversConfig.java         # Konfigurasi audit trail JaVers
+            ├── controller/                   # REST API Endpoints (11 Controller)
+            │   ├── AuthController.java
+            │   ├── CategoryController.java
+            │   ├── CustomerController.java
+            │   ├── OutletController.java
+            │   ├── PriceController.java
+            │   ├── ProductController.java
+            │   ├── ReportController.java
+            │   ├── ShiftController.java
+            │   ├── StockController.java
+            │   ├── StorageController.java
+            │   ├── TransactionController.java
+            │   ├── UnitController.java
+            │   └── UserController.java
+            ├── service/                      # Business Logic Layer (10 Service)
+            │   ├── AuthService.java
+            │   ├── CustomerService.java
+            │   ├── MasterCatalogService.java
+            │   ├── OutletService.java
+            │   ├── PriceService.java
+            │   ├── ProductService.java
+            │   ├── ReportService.java
+            │   ├── ShiftService.java
+            │   ├── StockService.java
+            │   ├── TransactionService.java
+            │   └── UserService.java
+            ├── repository/                   # Spring Data JPA Repositories (17 Repos)
+            │   ├── CashierShiftRepository.java
+            │   ├── CategoryRepository.java
+            │   ├── CustomerRepository.java
+            │   ├── OutletRepository.java
+            │   ├── PaymentRepository.java
+            │   ├── PriceHistoryRepository.java
+            │   ├── PriceRepository.java
+            │   ├── ProductRepository.java
+            │   ├── ProductVariantRepository.java
+            │   ├── RoleRepository.java
+            │   ├── StockHistoryRepository.java
+            │   ├── StockRepository.java
+            │   ├── StorageRepository.java
+            │   ├── TenantRepository.java
+            │   ├── TransactionHistoryRepository.java
+            │   ├── TransactionItemRepository.java
+            │   ├── TransactionRepository.java
+            │   ├── UnitRepository.java
+            │   └── UserRepository.java
+            ├── entity/                       # JPA Entity Mapping (18 Entitas)
+            │   ├── CashierShift.java, Category.java, Customer.java, Outlet.java,
+            │   ├── Payment.java, Price.java, PriceHistory.java, Product.java,
+            │   ├── ProductVariant.java, Promotion.java, ReceiptSetting.java, Role.java,
+            │   ├── Stock.java, StockHistory.java, Storage.java, Tenant.java, Transaction.java,
+            │   ├── TransactionHistory.java, TransactionItem.java, Unit.java, User.java
+            ├── dto/                          # Data Transfer Objects (Request/Response)
+            └── exception/                    # Global Exception Handler & Custom Errors
+                ├── BadRequestException.java
+                ├── ResourceNotFoundException.java
+                └── GlobalExceptionHandler.java
+
+B. FRONTEND STRUCTURE:
+zona_pos_frontend/
+├── package.json                              # Script Vite, React 19, Lucide, Confetti
+├── vite.config.js                            # Konfigurasi reverse proxy /api/v1 -> localhost:8080
+├── index.html                                # HTML root template
+├── start-frontend.bat                        # Skrip start cepat frontend
+├── .gitignore                                # Konfigurasi git ignore lengkap
+├── rtk/                                      # Alat pembantu CLI Rust Token Killer
+├── ponytail/                                 # Ruleset / skill AI coding assistant
+└── src/
+    ├── main.jsx                              # React Root Render
+    ├── App.jsx                               # Master layout, navigation tabs, modal container
+    ├── index.css                             # CSS Design System (Theme, Colors, Utility classes)
+    ├── App.css                               # Layout specific CSS
+    ├── services/
+    │   └── api.js                            # Central HTTP Client wrapper untuk seluruh backend API
+    ├── context/
+    │   ├── AuthContext.jsx                   # User session, JWT in localStorage, active outlet
+    │   ├── CartContext.jsx                   # POS cart state, math totals, hold, checkout
+    │   └── ShiftContext.jsx                  # Active shift monitoring & status
+    ├── pages/
+    │   ├── AuthPage.jsx                      # Login & Registrasi Tenant baru
+    │   ├── PosKasir.jsx                      # Kasir POS, katalog grid, search barcode, payment modal
+    │   ├── TransactionsPage.jsx              # Riwayat penjualan kasir, cetak ulang struk & refund
+    │   ├── DashboardReports.jsx              # Omset, profit kotor, grafik HPP, analisa margin
+    │   ├── ProductsPage.jsx                  # CRUD produk, varian, dan setting harga bertingkat
+    │   ├── InventoryPage.jsx                 # Mutasi transfer stok gudang->outlet, opname, purchase
+    │   ├── ShiftsPage.jsx                    # Riwayat shift, rekonsiliasi kas masuk vs keluar
+    │   ├── CustomersPage.jsx                 # CRM daftar pelanggan & histori belanja
+    │   ├── OutletsUsersPage.jsx              # Multi-cabang & manajemen akun staf / kasir
+    │   └── SettingsPage.jsx                  # Pengaturan identitas toko & format struk thermal (58mm/80mm)
+    ├── utils/
+    │   └── exportUtils.js                    # Universal Excel (.xlsx) & CSV (.csv) engine via SheetJS
+    └── components/
+        ├── Navbar.jsx                        # Bar navigasi atas, selector cabang, indikator shift
+        ├── Sidebar.jsx                       # Menu navigasi samping
+        ├── OpenShiftModal.jsx                # Dialog pembukaan modal awal kasir
+        ├── CloseShiftModal.jsx               # Dialog penutupan shift & rekonsiliasi fisik
+        ├── CashMovementModal.jsx             # Dialog kas masuk & keluar laci kasir (Petty Cash)
+        ├── ShiftReceiptModal.jsx             # Struk thermal rekapitulasi shift (Z-Report & X-Report)
+        ├── RecallOrderModal.jsx              # Dialog pemanggilan kembali order yang di-hold
+        ├── ReceiptModal.jsx                  # Struk belanja thermal siap cetak (window.print, 58mm & 80mm)
+        └── ReportPrintModal.jsx              # Pratinjau cetak A4 dokumen resmi & generator PDF eksekutif
+
+
+--------------------------------------------------------------------------------
+4. ARSITEKTUR DATABASE & SKEMA RELASIONAL (DATABASE & ERD SCHEMA)
+--------------------------------------------------------------------------------
+Database didesain secara relasional kuat dengan 19 tabel, dilengkapi constraint
+foreign keys ON DELETE CASCADE / SET NULL dan indeks performa tinggi:
+
+1.  roles:
+    - id (PK), name (UNIQUE: ROLE_TENANT_OWNER, ROLE_OUTLET_MANAGER, ROLE_CASHIER).
+2.  tenants:
+    - id (PK), name, address, owner_name, owner_phone, owner_email, status, created_at.
+3.  outlets:
+    - id (PK), tenant_id (FK), name, address, manager_name, manager_phone, manager_email.
+4.  users:
+    - id (PK), tenant_id (FK), outlet_id (FK, nullable), name, email (UNIQUE), password,
+      phone, is_active, role_id (FK).
+5.  category:
+    - id (PK), tenant_id (FK), code, name, parent_id (FK nullable untuk hierarki sub-kategori),
+      is_parent, desc. (UNIQUE: tenant_id + code).
+6.  units:
+    - id (PK), tenant_id (FK), code, name, size (default 1). (UNIQUE: tenant_id + code).
+7.  storages:
+    - id (PK), tenant_id (FK), code, name (Gudang logistik pusat). (UNIQUE: tenant_id + code).
+8.  products:
+    - id (PK), tenant_id (FK), sku, barcode, name, desc, category_id (FK), unit_id (FK), is_active.
+      (UNIQUE: tenant_id + sku).
+9.  product_variants:
+    - id (PK), product_id (FK), sku (UNIQUE), name.
+10. stocks:
+    - id (PK), product_id (FK), variant_id (FK), outlet_id (FK nullable), storage_id (FK nullable),
+      quantity, minimum.
+11. stock_history:
+    - id (PK), stock_id (FK), stock_in_out, quantity, status (IN/OUT),
+      type (SALE, PURCHASE, ADJUSTMENT, TRANSFER), remarks, user_id (FK), created_at.
+12. prices:
+    - id (PK), product_id (FK), outlet_id (FK), selling_price, purchase_price,
+      discount_percentage, discount_amount, tax_percentage, tax_amount.
+      (UNIQUE: product_id + outlet_id).
+13. price_history:
+    - id (PK), price_id (FK), selling_price, purchase_price, discount_percentage,
+      discount_amount, tax_percentage, tax_amount, user_id (FK), created_at.
+14. customers:
+    - id (PK), tenant_id (FK), name, phone, email, created_at. (UNIQUE: tenant_id + phone).
+15. cashier_shifts:
+    - id (PK), outlet_id (FK), user_id (FK), start_cash, expected_cash, actual_cash,
+      total_cash_in, total_cash_out, status (OPEN, CLOSED), opened_at, closed_at.
+16. transactions:
+    - id (PK), trx_no (UNIQUE), tenant_id (FK), outlet_id (FK), user_id (FK), customer_id (FK),
+      shift_id (FK), subtotal, discount, order_discount, order_discount_type, order_discount_rate,
+      voucher_code, voucher_discount, tax, grand_total, status (DRAFT, COMPLETED, REFUNDED),
+      due_date, created_at, updated_at.
+17. transaction_items:
+    - id (PK), trx_id (FK), outlet_id (FK), product_id (FK), variant_id (FK),
+      quantity, base_price (HPP), unit_price, discount, tax, subtotal.
+18. payments:
+    - id (PK), trx_id (FK), payment_method (CASH, QRIS, TRANSFER, DEBIT, TEMPO), amount,
+      status (PAID, UNPAID, PARTIAL, REFUNDED), reference, due_date, notes, paid_at.
+19. transaction_history:
+    - id (PK), trx_id (FK), trx_no, outlet_id (FK), customer_id (FK), subtotal,
+      discount, order_discount, voucher_code, voucher_discount, tax, grand_total, status,
+      user_id (FK), created_at.
+20. cash_movements:
+    - id (PK), shift_id (FK), tenant_id (FK), outlet_id (FK), user_id (FK),
+      type (CASH_IN, CASH_OUT), amount, category (Operasional, Bahan, Tambah Modal, Kurir, Lainnya),
+      notes, created_at.
+21. promotions:
+    - id (PK), tenant_id (FK), outlet_id (FK, nullable), code (UNIQUE per tenant),
+      name, description, discount_type (PERCENT, FIXED), discount_value, min_order_amount,
+      max_discount_amount, start_date, end_date, usage_limit, times_used, is_active,
+      created_by, created_at, updated_by, updated_at.
+22. receipt_settings:
+    - id (PK), tenant_id (FK), outlet_id (FK, nullable), paper_size (VARCHAR(10) DEFAULT '58mm'),
+      business_name (VARCHAR(150)), logo_url (TEXT), address (TEXT), phone (VARCHAR(50)),
+      instagram (VARCHAR(100)), website (VARCHAR(150)), footer_note (TEXT),
+      show_logo (BOOLEAN DEFAULT TRUE), show_social_media (BOOLEAN DEFAULT TRUE),
+      created_at, updated_at. (UNIQUE: tenant_id + outlet_id).
+23. suppliers:
+    - id (PK), tenant_id (FK), name (VARCHAR(150)), contact_person (VARCHAR(100)),
+      phone (VARCHAR(50)), email (VARCHAR(100)), address (TEXT),
+      payment_terms (VARCHAR(50) DEFAULT 'COD'), notes (TEXT), is_active (BOOLEAN DEFAULT TRUE),
+      created_at, updated_at. (UNIQUE: tenant_id + name).
+24. purchase_orders:
+    - id (PK), po_no (VARCHAR(50) UNIQUE), tenant_id (FK), supplier_id (FK, nullable),
+      storage_id (FK, nullable), product_id (FK), variant_id (FK, nullable),
+      quantity (DOUBLE PRECISION), purchase_price (DOUBLE PRECISION),
+      total_cost (DOUBLE PRECISION), invoice_no (VARCHAR(100)), remarks (TEXT),
+      user_id (FK, nullable), created_at.
+
+
+--------------------------------------------------------------------------------
+5. KEAMANAN & AUTENTIKASI (SECURITY, JWT & RBAC)
+--------------------------------------------------------------------------------
+- Algoritma Password : BCrypt (Cost Factor 10).
+- Token Standar      : JWT (HMAC-SHA256) via header `Authorization: Bearer <token>`.
+- Token Expiration   :
+  * Owner & Manager  : 1 jam (3.600.000 ms) untuk keamanan data manajerial.
+  * Kasir (Cashier)  : 24 jam (86.400.000 ms) agar kasir tidak ter-logout saat
+                       jam operasional shift kerja sedang berlangsung.
+- Role Hierarchy     :
+  1. `ROLE_TENANT_OWNER`   : Hak akses penuh ke seluruh tenant, semua cabang, laporan keuangan,
+                             manajemen outlet, dan pembuatan user staf.
+  2. `ROLE_OUTLET_MANAGER` : Hak akses ke cabang yang ditugaskan, manajemen stok, harga,
+                             dan laporan performa outlet.
+  3. `ROLE_CASHIER`        : Akses operasional harian: Buka/Tutup Shift, Transaksi POS,
+                             Hold/Recall Order, dan Pendaftaran Pelanggan baru.
+- CORS Configuration : Terbuka untuk seluruh origin pengembang dengan dukungan credentials
+                       dan methods: GET, POST, PUT, PATCH, DELETE, OPTIONS.
+
+
+--------------------------------------------------------------------------------
+6. MODUL & ALUR BISNIS UTAMA (BUSINESS LOGIC & WORKFLOWS)
+--------------------------------------------------------------------------------
+
+6.1. MULTI-TENANCY & CABANG (OUTLET)
+- Setiap request diisolasi berdasarkan `tenantId` dari token JWT pengguna yang login.
+- Tenant Owner dapat menambahkan cabang baru melalui menu Outlets & Users.
+- Pengguna yang memiliki akses multi-cabang dapat beralih cabang via dropdown di Navbar.
+
+6.2. MASTER DATA (KATALOG & SATUAN)
+- Mendukung Kategori bertingkat (parent-child category) untuk pengelompokan produk.
+- Satuan unit barang (CUP, PCS, PACK, BOX) dengan faktor ukuran (size).
+- Gudang Pusat (Storage) dapat didaftarkan terpisah dari outlet untuk sentralisasi logistik.
+
+6.3. KATALOG PRODUK & PENETAPAN HARGA
+- Produk memiliki SKU unik per tenant serta Barcode untuk pemindaian scanner fisik.
+- Dukungan varian produk (contoh: Ukuran Small, Medium, Large atau Varian Rasa).
+- Penetapan Harga Bersifat Multi-Tier: Harga jual (`sellingPrice`) dan harga modal (`purchasePrice`)
+  dapat disetel berbeda di setiap cabang outlet.
+- Diskon dan Pajak per produk dapat dikonfigurasi dalam persentase atau nominal langsung.
+- Setiap kali harga diubah, riwayat harga lama otomatis disimpan di tabel `price_history`.
+
+6.4. MANAJEMEN STOK & MUTASI ATOMIK
+- Tabel `stocks` menyimpan inventaris secara spesifik: apakah stok berada di Toko/Outlet
+  atau di Gudang Pusat (Storage).
+- Tiga Jenis Mutasi Inventaris:
+  1. Transfer Stok (Gudang -> Outlet): Stok gudang dikurangi dan stok outlet ditambahkan
+     dalam satu transaksi atomik database (`@Transactional`).
+  2. Penyesuaian Stok (Stock Opname): Sinkronisasi hitungan fisik dengan sistem, dilengkapi
+     alasan (remarks) dan batas minimum stok untuk alert.
+  3. Pembelian / Barang Masuk (Purchase): Penambahan stok baru dari supplier ke gudang atau outlet.
+- Peringatan Stok Menipis: Otomatis mendeteksi produk yang stoknya `<= minimum`.
+- Setiap mutasi mencatat data rinci ke `stock_history` (IN/OUT, delta, tipe, dan user penanggung jawab).
+
+6.5. MANAJEMEN SHIFT KASIR & REKONSILIASI KAS LACI (PETTY CASH CASH IN - CASH OUT)
+- Kasir WAJIB membuka shift sebelum dapat melayani transaksi pembayaran.
+- Buka Shift: Memasukkan nominal Kas Awal (Modal Pecahan/Float). Status shift menjadi `OPEN`.
+- Operasional Kas Masuk & Kas Keluar (Petty Cash):
+  * Pengeluaran Darurat Laci (Cash Out): Misal beli es batu kristal, galon air, plastik kresek,
+    lakban, bayar kurir paket COD. Kasir mencatat tipe CASH_OUT, nominal, kategori biaya, dan keterangan.
+  * Tambahan Modal / Suntik Kas (Cash In): Misal owner menyuntikkan uang receh pecahan kembalian.
+    Kasir mencatat tipe CASH_IN, nominal, kategori, dan keterangan.
+  * Proteksi Anti-Overdraft Kasir: Sistem secara otomatis memvalidasi bahwa pengeluaran kas keluar
+    TIDAK BOLEH melebihi saldo fisik uang tunai yang ada di laci saat itu.
+- Selama Shift:
+  * Formula Realtime Saldo Laci:
+    `expectedCash = startCash + totalCashSales + totalCashIn - totalCashOut`
+- Tutup Shift & Rekonsiliasi Kas Bersih:
+  * Kasir menghitung fisik uang tunai di laci dan memasukkan `actualCash`.
+  * Sistem membandingkan kas fisik aktual dengan estimasi sistem secara presisi.
+  * Berkat pencatatan kas masuk & kas keluar yang disiplin, kas fisik laci seimbang (Rp 0 selisih).
+  * Data `total_cash_in` dan `total_cash_out` dibekukan (snapshot) permanen ke tabel `cashier_shifts`.
+- Cetak Struk Rekap Shift (Z-Report & X-Report Thermal POS):
+  * Z-Report (Tutup Shift): Struk resmi penutupan shift kasir berformat thermal 58mm/80mm yang memuat
+    waktu buka/tutup, kasir, modal awal, penjualan tunai & non-tunai, kas masuk, kas keluar,
+    estimasi laci, kas fisik aktual, selisih kas, rincian mutasi kas kecil, dan kolom tanda tangan kasir & manajer.
+    Struk ini wajib dimasukkan ke dalam amplop setoran kasir bersama uang tunai fisik untuk disetorkan ke bank.
+  * X-Report (Interim): Pembacaan sementara kas berjalan kasir tanpa menutup sesi shift aktif.
+
+6.6. TRANSAKSI POS (POINT OF SALE)
+- Pencarian produk instan melalui nama, SKU, atau pemindai Barcode (auto-enter).
+- Fitur Parkir Transaksi (Hold Order):
+  * Jika ada pelanggan yang ingin menambah barang atau antrean tertunda, kasir dapat
+    mengklik "Parkir Transaksi" (Hold). Keranjang disimpan ke database dengan status `DRAFT`.
+  * Kasir bebas melayani pelanggan berikutnya tanpa kehilangan keranjang sebelumnya.
+- Pemanggilan Kembali (Recall Order):
+  * Kasir membuka daftar pesanan yang di-hold dan memuatnya kembali ke keranjang belanja.
+- Pembayaran Cepat:
+  * Dukungan CASH, QRIS, DEBIT, dan TRANSFER.
+  * Tombol denominasi cepat uang pas, +Rp 10.000, +Rp 20.000, +Rp 50.000, +Rp 100.000.
+  * Hitungan kembalian otomatis.
+- Pengurangan Stok Otomatis: Begitu checkout sukses, kuantitas stok di outlet berkurang
+  dan dicatat ke riwayat dengan referensi No. Transaksi.
+- Struk Belanja: Format struk kasir thermal 58mm/80mm siap cetak dengan perintah cetak browser.
+
+6.7. PENGEMBALIAN DANA (REFUND) & RESTORASI INVENTARIS
+- Transaksi `COMPLETED` dapat di-refund oleh manajer/owner dengan menyertakan alasan.
+- Logika Atomik Refund:
+  * Status transaksi diubah menjadi `REFUNDED`.
+  * Status pembayaran diubah menjadi `REFUNDED`.
+  * Seluruh item barang yang dibeli otomatis dikembalikan (restorasi) ke stok outlet terkait.
+  * Pergerakan stok masuk (IN) tercatat pada `stock_history` dengan tipe `ADJUSTMENT` / alasan refund.
+
+6.8. CRM / MANAJEMEN PELANGGAN
+- Pencatatan data pelanggan (Nama, Nomor WhatsApp/Telepon, Email).
+- Pendaftaran instan pelanggan baru langsung dari layar POS kasir saat melayani transaksi.
+- Pelacakan riwayat transaksi belanja pelanggan untuk analisis loyalitas.
+
+6.9. DASHBOARD LAPORAN & LABA KOTOR (GROSS PROFIT)
+- Omset Kotor (Gross Sales) vs Omset Bersih (Net Sales).
+- Laba Kotor (Gross Profit) = `Total Penjualan Bersih - Total HPP (Harga Pokok Penjualan)`.
+- Margin Persentase Profit terhitung otomatis.
+- Ringkasan penerimaan per metode pembayaran (Berapa kas fisik, QRIS, EDC Debit, dan Transfer).
+- Tren harian volume dan nilai transaksi.
+
+6.10. KLASTER 3: DISKON GLOBAL NOTA & KODE VOUCHER PROMOSI
+- Mengatasi keterbatasan diskon yang sebelumnya hanya bisa disetel per-item barang di master data.
+- Dua Lapisan Diskon Global Nota:
+  1. Diskon Nota Manual (Order Discount):
+     * Fleksibilitas format: Kasir dapat memilih mode Rupiah langsung (FIXED, misal Rp 15.000)
+       atau Persentase (PERCENT, misal Diskon Member 10%).
+     * Tersedia tombol preset nominal cepat (5k, 10k, 20k, 50k) dan persen (5%, 10%, 15%, 20%).
+     * Nominal diskon memotong total tagihan belanja secara langsung dan realtime.
+  2. Kode Voucher Promosi (Promotion Voucher Coupon):
+     * Input kode voucher promo unik (contoh: HEMAT10, GRANDOPENING, MEMBER5, DISKON25K).
+     * Validasi Syarat Promo Komprehensif:
+       - Status keaktifan voucher (`is_active`).
+       - Periode berlaku (`start_date` s/d `end_date`).
+       - Batas kuota pemakaian total (`usage_limit` vs `times_used`).
+       - Batas minimum pembelanjaan nota (`min_order_amount`).
+       - Plafon maksimal potongan (`max_discount_amount`) untuk voucher bertipe persentase.
+       - Validitas cabang outlet (apakah voucher berlaku general atau khusus cabang tertentu).
+     * Chip Rekomendasi Voucher Aktif: Kasir disajikan pill tombol voucher aktif yang dapat
+       langsung diklik untuk memasang voucher tanpa perlu mengetik manual.
+  3. Integritas Transaksional & Concurrency Locking:
+     * Saat checkout diproses, penggunaan kupon voucher dikunci menggunakan Pessimistic Write Lock
+       (`SELECT ... FOR UPDATE`) pada tabel `promotions`, mencegah kuota voucher terlewati
+       akibat checkout paralel dari banyak kasir pada milidetik yang sama.
+     * Nilai diskon nota (`order_discount`) dan voucher (`voucher_discount`) disimpan permanen
+       ke tabel `transactions` dan `transaction_history` untuk audit trail finansial 100% presisi.
+  4. Persistensi DRAFT (Hold & Recall Order):
+     * Jika transaksi di-hold (parkir), data Diskon Nota dan Kode Voucher yang sudah dipasang
+       tetap tersimpan rapi pada DRAFT dan otomatis terisi kembali saat pesanan di-recall.
+  5. Transparansi Cetak Struk Belanja Kasir:
+     * Struk thermal kasir memuat rincian terpisah: Subtotal Produk, Diskon Produk, Diskon Nota,
+       Voucher Promo, Pajak PPN, dan Grand Total Pembayaran. Pelanggan menerima rincian bukti
+       hemat yang transparan.
+
+6.11. KLASTER 4: HARDWARE & KUSTOMISASI STRUK BELANJA (58MM & 80MM)
+- Mengatasi masalah header dan footer struk thermal yang sebelumnya statis/hardcoded ("ZONA POS UMKM").
+- Kustomisasi Identitas Toko Per-Cabang / Per-Tenant:
+ * Logo Toko: Mendukung unggah berkas gambar lokal (otomatis dikonversi ke Base64 Data URL)
+   maupun URL gambar online eksternal, dilengkapi filter cetak monokrom untuk ketajaman thermal optimal.
+ * Nama Bisnis / Outlet Toko: Header nota besar & tebal sesuai identitas merek dagang.
+ * Alamat Lengkap: Lokasi toko yang jelas untuk keabsahan struk belanja.
+ * Kontak Resmi: Nomor Telepon / WhatsApp dan akun Instagram resmi toko.
+ * Catatan Kaki Struk (Footer Note): Pesan penutup, kebijakan retur garansi barang, ucapan
+   terima kasih, atau info promo yang dapat disesuaikan sesuka hati.
+ * Sakelar Visibilitas: Toggle on/off untuk logo dan media sosial.
+- Fleksibilitas Format Hardware Printer Thermal (58mm vs 80mm):
+ * Format 58mm (Mini Printer Bluetooth / USB Portable): Lebar cetak ~48mm (32 karakter teks).
+   Didesain khusus untuk kasir mobile, kedai kopi, food truck, dan meja pembayaran sempit.
+ * Format 80mm (Desktop Thermal Ritel / Supermarket): Lebar cetak ~72mm (48 karakter teks).
+   Didesain untuk ritel besar, supermarket, resto dengan banyak rincian item belanja.
+- Aturan Cetak Presisi CSS Thermal (@media print):
+ * Menerapkan reset margin browser (@page { margin: 0; size: auto; }) dan isolasi kontainer
+   cetak (#printable-receipt { width: 48mm / 72mm !important; padding: 3mm !important; }),
+   menghilangkan pemotongan teks samping dan header/footer URL bawaan browser web.
+- Pratinjau Interaktif Real-Time (Live Thermal Receipt Preview):
+ * Panel pratinjau di sebelah kanan form pengaturan merespons setiap ketikan secara instan,
+   menampilkan simulasi kertas thermal fisik dengan tepi robek (tear border) dan font monospaced.
+ * Dilengkapi tombol "Tes Cetak Sampel" untuk uji coba langsung ke printer thermal fisik kasir.
+- Mekanisme Fallback Cerdas (Multi-Tenant & Multi-Outlet Inheritance):
+ * Pengaturan dipetakan berdasarkan `(tenant_id, outlet_id)`.
+ * Jika cabang outlet belum memiliki pengaturan khusus, sistem otomatis menggunakan default tenant
+   atau membuat konfigurasi awal cerdas dari data nama dan alamat outlet yang sudah terdaftar.
+
+6.12. KLASTER 5: LAPORAN & EKSPOR DATA AKUNTANSI (EXCEL & PDF)
+- Mengatasi kendala pemilik toko (owner) dan akuntan dalam menghitung pajak bulanan atau integrasi
+  ke software akuntansi pihak ketiga (seperti Accurate Online, Jurnal by Mekari, Zahir Accounting).
+- Format Ekspor Universal:
+  1. Excel Native (.xlsx via SheetJS):
+     * Multi-Sheet Workbook: File Excel yang diunduh pada menu Laporan Omset memuat 3 sheet terpisah:
+       - Sheet 1: "Ringkasan Omset & Laba" (KPI Finansial, Cash vs QRIS vs EDC Debit vs Transfer).
+       - Sheet 2: "Rincian Margin Produk (COGS)" (Nama Produk, Qty Terjual, Revenue, HPP, Gross Profit, Margin %).
+       - Sheet 3: "Audit Transaksi Kasir" (Seluruh daftar transaksi pada periode terpilih).
+     * Format Sel & Tipe Data Presisi: Kolom numerik, mata uang, dan tanggal di-encode dengan tipe data
+       angka asli (bukan teks), sehingga rumus Excel seperti `SUM()`, `AVERAGE()`, atau PivotTable
+       dapat langsung diaplikasikan tanpa perlu konversi manual.
+     * Lebar Kolom Otomatis (Auto-fit Column Widths): Kolom disesuaikan dengan panjang teks terpanjang,
+       mencegah tampilan error pemotongan teks atau sel `###` pada Microsoft Excel.
+  2. CSV Akuntansi Berstandar Internasional (.csv with UTF-8 BOM):
+     * Menambahkan byte sequence UTF-8 BOM (`\uFEFF`) di awal berkas CSV untuk memastikan aplikasi Excel
+       di sistem operasi Windows membuka huruf dan angka Indonesia secara mulus tanpa korupsi encoding.
+  3. Dokumen Resmi Eksekutif & PDF Vektor (Letter / A4 Print Engine):
+     * Pratinjau Dokumen Eksekutif ("ReportPrintModal"): Layout kertas formal dilengkapi Kop Surat resmi
+       toko, informasi kontak, metadata pencetakan, tabel data bergaris rapi dengan zebra striping,
+       kotak total di baris penutup, dan kolom pengesahan tanda tangan ganda ("Disiapkan Oleh" & "Disetujui Oleh").
+     * CSS Print Layout Presisi (@page { size: A4 portrait; margin: 8mm 10mm; }): Menghasilkan dokumen
+       PDF vektor berkualitas tinggi yang siap dicetak ke printer kertas atau disimpan sebagai berkas PDF
+       melalui dialog bawaan browser.
+- Penerapan Menyeluruh di 3 Modul Finansial:
+  * Halaman Laporan & Omset (`DashboardReports.jsx`): Dilengkapi filter rentang tanggal cepat (Hari Ini,
+    7 Hari, 30 Hari, Bulan Ini, dan Kustom Tanggal) serta tombol ekspor Excel dan cetak PDF.
+  * Halaman Riwayat Transaksi (`TransactionsPage.jsx`): Ekspor seluruh transaksi terfilter menjadi
+    Buku Jurnal Penjualan Kasir (Sales Journal) lengkap dengan rincian diskon nota, voucher, dan status bayar.
+  * Halaman Riwayat Shift Kasir (`ShiftsPage.jsx`): Ekspor seluruh rekam jejak shift kasir menjadi
+    Laporan Rekonsiliasi Kas Laci (Cash Drawer Accountability) lengkap dengan modal awal, mutasi kas kecil,
+    estimasi sistem, fisik laci, dan selisih kas.
+
+6.13. KLASTER 6: MANAJEMEN PENGADAAN (SUPPLY CHAIN & SUPPLIER)
+--------------------------------------------------------------------------------
+6.13.1. Master Data Supplier & Purchase Order (PO Bahan Baku/Barang):
+- Masalah Sebelumnya:
+  Penerimaan barang masuk hanya meminta catatan keterangan teks biasa tanpa asosiasi
+  ke data vendor, tanpa tracking termin pembayaran (COD/Tempo), dan tanpa analisis
+  perubahan harga beli modal bahan baku.
+- Solusi Enterprise:
+  1. Master Data Mitra Pemasok (Vendor/Supplier):
+     * Data komprehensif: Nama Perusahaan Vendor, Kontak Sales (PIC), Nomor Telepon / WA,
+       Email, Alamat Gudang Pengiriman, dan Termin Pembayaran resmi (COD, NET 7, NET 14,
+       NET 30, TEMPO).
+     * Filter multi-tenant ketat: Vendor terisolasi per tenant_id dengan constraint
+       unik pada nama supplier.
+  2. Tracking Harga Modal Terakhir (Last Purchase Price Tracking):
+     * Setiap kali kasir/gudang memilih produk pada form "Penerimaan Barang Masuk (PO)",
+       sistem langsung mengeksekusi query efisien untuk mendeteksi harga beli modal terakhir
+       dari transaksi pengadaan sebelumnya.
+     * Analisa Fluktuasi Harga Otomatis: Sistem secara realtime membandingkan harga modal baru
+       terhadap harga sebelumnya, menampilkan badge indikator visual:
+       - Merah (▲ Naik +Rp X / +Y%): Peringatan kenaikan harga bahan baku.
+       - Hijau (▼ Turun -Rp X / -Y%): Indikator efisiensi / potongan harga vendor.
+       - Netral: Harga stabil sama persis.
+  3. Pencatatan Purchase Order & Update Master Harga Modal:
+     * Menghasilkan Nomor Dokumen PO unik otomatis (`PO-YYYYMMDD-XXXX`).
+     * Menghitung total estimasi nilai pengadaan secara presisi (`quantity * purchase_price`).
+     * Mendukung nomor faktur/invoice eksternal dari vendor (`invoice_no`).
+     * Mengupdate master harga beli (`prices.purchase_price`) secara transparan dan mencatat
+       audit mutasi kartu stok (`StockHistory` bertipe `PURCHASE`).
+
+6.13.2. Generator Cetak Barcode Code 128 & Price Tag Rak Toko:
+- Masalah Sebelumnya:
+  Toko ritel dan minimarket baru kesulitan membuat label barcode untuk produk yang belum
+  memiliki barcode pabrik. Tidak ada fasilitas cetak price tag rak yang siap ditempel
+  di rak etalase minimarket.
+- Solusi Enterprise:
+  1. Engine Generator Barcode Vektor Code 128 (Pure Mathematical SVG):
+     * Mengimplementasikan standar internasional Code 128 Subset B dengan perhitungan
+       checksum Modulo 103 secara presisi.
+     * Barcode digambar dalam bentuk vektor `<svg>` (bukan gambar bitmap raster), menghasilkan
+       garis barcode yang luar biasa tajam (razor-sharp) pada printer label thermal 203 DPI
+       maupun printer laser/inkjet A4, sehingga langsung terbaca 100% oleh pemindai barcode
+       fisik (1D Laser / CCD Scanner) dalam waktu <1 milidetik.
+  2. Tiga Format Cetak Label Fleksibel:
+     * Format 1: Price Tag Rak Minimarket (Ukuran 60mm x 40mm)
+       Memuat Header Nama Toko, Tanggal Cetak, Nama Produk Bold, Kategori & Satuan Unit,
+       Kotak Harga Jual Ritel Besar & Mencolok (e.g. "Rp 18.500"), serta Barcode Code 128
+       dan SKU di bagian bawah.
+     * Format 2: Stiker Barcode Produk Mini (Ukuran 40mm x 30mm)
+       Cocok untuk ditempel langsung di kemasan botol, pakaian, snack, atau plastik barang.
+     * Format 3: Lembar Kertas Stiker Grid A4 (Universal Tom & Jerry 108 / 121)
+       Layout grid 3 kolom x 8 baris (24 label per lembar A4), memungkinkan toko mencetak
+       seluruh label produk menggunakan printer kertas biasa tanpa harus membeli printer barcode khusus.
+  3. Batch Printing & Kuantitas Mandiri:
+     * Pengguna dapat memilih banyak produk sekaligus (Select All) dan mengatur jumlah lembar
+       label per barang (misal: Produk A cetak 5 lembar, Produk B cetak 10 lembar).
+     * Tombol "Cetak Barcode" tersedia baik di header katalog maupun per-baris tabel produk.
+
+
+--------------------------------------------------------------------------------
+7. SPESIFIKASI REST API ENDPOINT (LENGKAP)
+--------------------------------------------------------------------------------
+Prefix Dasar: `/api/v1`
+
+A. AUTHENTICATION (`/auth`)
+- POST `/auth/login`               : Autentikasi user & pengembalian token JWT.
+- POST `/auth/register-tenant`     : Pendaftaran tenant bisnis baru, outlet default, & akun owner.
+- GET  `/auth/me`                  : Profil pengguna yang sedang login.
+
+B. OUTLETS (`/outlets`)
+- GET  `/outlets`                  : Daftar semua cabang outlet milik tenant.
+- POST `/outlets`                  : Tambah cabang baru.
+- PUT  `/outlets/{id}`             : Perbarui informasi cabang.
+
+C. USERS (`/users`)
+- GET   `/users?outletId={id}`     : Daftar user staf per cabang atau seluruh tenant.
+- POST  `/users`                   : Buat akun staf baru (Owner, Manager, Kasir).
+- PUT   `/users/{id}`              : Perbarui profil staf.
+- POST  `/users/{id}/reset-password`: Reset kata sandi staf.
+- PATCH `/users/{id}/toggle-status`: Mengaktifkan / menonaktifkan akun staf.
+
+D. MASTER DATA (`/categories`, `/units`, `/storages`)
+- GET  `/categories`               : Daftar seluruh kategori produk.
+- POST `/categories`               : Tambah kategori baru.
+- GET  `/units`                    : Daftar satuan barang.
+- POST `/units`                    : Tambah satuan baru.
+- GET  `/storages`                 : Daftar gudang logistik pusat.
+- POST `/storages`                 : Tambah gudang baru.
+
+E. PRODUK & HARGA (`/products`, `/prices`)
+- GET  `/products?outletId={id}`   : Ambil katalog produk lengkap dengan harga outlet & stok.
+- GET  `/products/{id}`            : Detail produk spesifik.
+- POST `/products`                 : Buat produk baru.
+- POST `/products/{id}/variants`   : Tambah varian produk baru.
+- POST `/prices`                   : Tetapkan harga jual/beli, diskon, & pajak per outlet.
+- GET  `/prices/history/{priceId}` : Riwayat perubahan harga.
+
+F. INVENTARIS & STOK (`/stocks`)
+- GET  `/stocks/outlet/{outletId}` : Daftar stok pada cabang outlet tertentu.
+- GET  `/stocks/storage/{storageId}`: Daftar stok pada gudang pusat tertentu.
+- GET  `/stocks/low-stock/{outletId}`: Peringatan barang yang stoknya di bawah batas minimum.
+- POST `/stocks/adjustment`        : Stock opname / koreksi kuantitas stok manual.
+- POST `/stocks/purchase`          : Pencatatan barang masuk dari pemasok (purchase).
+- POST `/stocks/transfer`          : Mutasi pemindahan stok dari Gudang Pusat ke Outlet.
+- GET  `/stocks/history/{stockId}` : Log riwayat pergerakan stok lengkap.
+
+G. SHIFT KASIR & KAS KECIL (`/shifts`)
+- POST `/shifts/open`              : Membuka shift kasir dengan kas awal.
+- POST `/shifts/{id}/close`        : Menutup shift & rekonsiliasi kas fisik laci.
+- GET  `/shifts/active`            : Status shift kasir yang sedang aktif untuk user yang login.
+- GET  `/shifts/outlet/{outletId}` : Riwayat seluruh sesi shift di outlet tertentu.
+- POST `/shifts/movements`         : Mencatat Kas Masuk / Kas Keluar kasir (Petty Cash).
+- GET  `/shifts/{shiftId}/movements`: Mengambil daftar seluruh mutasi kas kecil per shift.
+- GET  `/shifts/active/movements`  : Mengambil riwayat mutasi kas kecil shift aktif saat ini.
+
+H. TRANSAKSI KASIR (`/transactions`)
+- POST `/transactions/hold`        : Simpan sementara keranjang belanja (DRAFT).
+- POST `/transactions/checkout`    : Eksekusi checkout (mendukung metode tunggal, Split Payment campuran, dan Kasbon/Tempo), potong stok dengan Pessimistic Locking, & cetak struk (COMPLETED).
+- POST `/transactions/{id}/refund` : Batalkan transaksi, ubah status, & kembalikan stok (REFUNDED).
+- GET  `/transactions?outletId={id}&status={status}`: Cari transaksi berdasarkan outlet & status.
+- GET  `/transactions/{id}`        : Detail lengkap transaksi, rincian item, daftar pembayaran (payments), & status tempo.
+
+I. PELANGGAN & MANAJEMEN PIUTANG / KASBON (`/customers`)
+- GET  `/customers`                : Daftar seluruh pelanggan tenant lengkap dengan saldo kasbon aktif & jumlah nota belum lunas (Zero N+1 batch query).
+- POST `/customers`                : Registrasi pelanggan baru.
+- GET  `/customers/{id}`           : Detail data pelanggan & saldo piutang kasbon.
+- GET  `/customers/{id}/transactions`: Riwayat transaksi belanja pelanggan terkait.
+- GET  `/customers/{id}/unpaid-bills`: Daftar nota tagihan kasbon/tempo yang belum lunas per pelanggan.
+- POST `/customers/{id}/settle-debt` : Mencatat pelunasan/cicilan kasbon, audit status pembayaran, & sinkronisasi otomatis laci kasir (Cash In).
+
+J. LAPORAN & ANALITIK (`/reports`)
+- GET  `/reports/sales?outletId={id}&startDate={d}&endDate={d}`: Laporan penjualan, omset, & metode bayar.
+- GET  `/reports/gross-profit?outletId={id}&startDate={d}&endDate={d}`: Laporan HPP & Laba Kotor.
+
+K. VOUCHER & PROMOSI (`/promotions`) [KLASTER 3]
+- GET  `/promotions?outletId={id}`     : Mengambil daftar seluruh promo voucher yang aktif untuk outlet/tenant.
+- POST `/promotions/validate`          : Memvalidasi kode voucher terhadap subtotal keranjang belanja kasir.
+- GET  `/promotions/all`               : Mengambil seluruh master voucher (untuk Manager/Owner).
+- POST `/promotions`                   : Membuat promo voucher baru (kode, tipe, diskon, min belanja, max diskon).
+- PUT  `/promotions/{id}`              : Mengubah konfigurasi promo voucher.
+- DELETE `/promotions/{id}`            : Menghapus promo voucher.
+- PATCH `/promotions/{id}/toggle-status`: Mengaktifkan/menonaktifkan promo voucher.
+
+L. PENGATURAN STRUK & IDENTITAS TOKO (RECEIPT & STORE SETTINGS)
+- GET  `/receipt-settings?outletId={outletId}`: Mengambil konfigurasi struk aktif untuk cabang outlet terkait (atau fallback default).
+- POST `/receipt-settings`                   : Menyimpan / memperbarui konfigurasi identitas toko, logo, dan ukuran kertas thermal (58mm/80mm).
+
+M. EKSPOR DATA & AKUNTANSI (`/transactions/export`, `/reports/sales/export`) [KLASTER 5]
+- GET  `/transactions/export/csv?outletId={id}&status={status}`: Streaming CSV audit seluruh transaksi kasir.
+- GET  `/reports/sales/export/csv?outletId={id}&startDate={d}&endDate={d}`: Streaming CSV ringkasan finansial & omset per periode.
+
+N. SUPPLIER & PURCHASE ORDER (`/suppliers`) [KLASTER 6]
+- GET    `/suppliers`                       : Daftar seluruh vendor/supplier milik tenant (dukungan query ?onlyActive=true).
+- GET    `/suppliers/{id}`                  : Detail data master supplier.
+- POST   `/suppliers`                       : Registrasi vendor/supplier baru (Nama, Kontak, Alamat, Termin COD/NET).
+- PUT    `/suppliers/{id}`                  : Perbarui informasi master vendor/supplier.
+- DELETE `/suppliers/{id}`                  : Hapus master supplier.
+- PATCH  `/suppliers/{id}/toggle-status`    : Mengaktifkan atau menonaktifkan supplier.
+- GET    `/suppliers/history?productId={pId}&variantId={vId}`: Riwayat seluruh PO pengadaan untuk produk/varian terkait.
+- GET    `/suppliers/last-price?productId={pId}&variantId={vId}`: Mengambil harga beli modal terakhir untuk analisa fluktuasi.
+
+
+--------------------------------------------------------------------------------
+8. PANDUAN INSTALASI & MENJALANKAN SISTEM (RUN & SETUP GUIDE)
+--------------------------------------------------------------------------------
+
+A. PRASYARAT
+1. Java Development Kit (JDK) versi 17 atau lebih tinggi.
+2. PostgreSQL Server (Database aktif dengan nama `zona_pos_db`).
+3. Node.js versi 18+ dan NPM.
+
+B. SETUP BACKEND
+1. Konfigurasi kredensial database di `zona_pos_backend/src/main/resources/application.yml`:
+   ```yaml
+   spring:
+     datasource:
+       url: jdbc:postgresql://127.0.0.1:5433/zona_pos_db
+       username: postgres
+       password: your_password
+   ```
+2. Jalankan backend menggunakan skrip siap pakai:
+   ```cmd
+   start-backend.bat
+   ```
+   Atau via Maven CLI:
+   ```cmd
+   mvn spring-boot:run
+   ```
+   * Flyway akan otomatis mengeksekusi migrasi skema tabel (V1) dan demo data (V2).
+
+C. SETUP FRONTEND
+1. Masuk ke direktori frontend dan instal paket dependensi:
+   ```cmd
+   npm install
+   ```
+2. Jalankan frontend dev server menggunakan skrip:
+   ```cmd
+   start-frontend.bat
+   ```
+   Atau via NPM CLI:
+   ```cmd
+   npm run dev
+   ```
+3. Buka aplikasi di browser pada alamat:
+   `http://localhost:5173`
+
+
+--------------------------------------------------------------------------------
+9. AKUN DEMO BAWAAN (DEFAULT SEED CREDENTIALS)
+--------------------------------------------------------------------------------
+Sistem telah dilengkapi data demo awal untuk pengujian menyeluruh:
+
+1. Akun Tenant Owner:
+   - Email    : owner@zonapos.com
+   - Password : password123
+   - Peran    : ROLE_TENANT_OWNER (Akses seluruh menu & semua outlet)
+
+2. Akun Outlet Manager:
+   - Email    : manager@zonapos.com
+   - Password : password123
+   - Peran    : ROLE_OUTLET_MANAGER (Akses Cabang Utama Thamrin)
+
+3. Akun Kasir:
+   - Email    : kasir@zonapos.com
+   - Password : password123
+   - Peran    : ROLE_CASHIER (Akses Operasional Kasir POS & Shift)
+
+
+--------------------------------------------------------------------------------
+10. KATALOG FITUR LENGKAP & PANDUAN TEKNIS PEMAKAIAN (OPERATIONAL & CASHIER MANUAL)
+--------------------------------------------------------------------------------
+Dokumentasi ini adalah panduan operasional hidup (Living Documentation) yang wajib
+diperbarui setiap kali ada penambahan atau perubahan fitur pada sistem Zona POS.
+Berikut adalah daftar seluruh fitur yang tersedia serta panduan teknis pemakaiannya:
+
+10.1. LAYAR KASIR POS (SPEED OF SERVICE, HOTKEYS & SCANNER BARCODE)
+------------------------------------------------------------------
+- Lokasi Menu : Sidebar -> "Kasir POS" (Akses: Kasir, Manager, Owner).
+- Persyaratan : Shift kasir harus sudah dalam kondisi "OPEN" (Buka Shift).
+- Panduan Tombol Pintas Keyboard (Keyboard-Driven Hotkeys):
+  * [F2] : Fokus instan ke kolom pencarian / scanner barcode.
+  * [F4] : Parkir Transaksi (Hold Order) saat pelanggan menunda pembayaran.
+  * [F7] : Panggil Kembali Antrean (Recall Order).
+  * [F8] : Buka dialog Pembayaran / Checkout Cepat.
+  * [Esc]: Batalkan modal aktif / kembali ke layar utama kasir.
+  * [Enter]: Saat pemindaian barcode selesai atau hasil pencarian produk tunggal,
+             otomatis menambahkan produk ke keranjang tanpa klik mouse.
+- Pemilihan Varian Produk Cepat:
+  * Jika produk memiliki varian (misal: Size M/L, Dingin/Panas), klik pada kartu
+    produk akan memunculkan modal dialog "Pilih Varian Produk" yang menampilkan
+    stok realtime masing-masing varian.
+  * Kasir juga dapat langsung mengklik tombol pill "+ Varian" di bagian bawah kartu produk.
+  * Setiap penambahan produk memicu audio feedback sintetis (retail beep sound).
+- Pemilihan Pelanggan (Customer Selector):
+  * Kasir dapat memilih pelanggan terdaftar dari dropdown atau menekan tombol "+"
+    untuk mendaftarkan pelanggan baru secara cepat tanpa keluar dari kasir.
+- Denominasi Uang Tunai Cepat:
+  * Modal pembayaran tunai dilengkapi tombol nominal instan: Uang Pas, Rp 10.000,
+    Rp 20.000, Rp 50.000, Rp 100.000, dan Rp 200.000 untuk mempercepat transaksi.
+- Pembayaran Campuran (Split Payment):
+  * Cara Menggunakan: Pada dialog checkout kasir (Hotkeys: F8 / tombol "Bayar Cepat"), tekan tab/opsi "SPLIT".
+  * Kasir dapat memecah pembayaran satu transaksi ke berbagai metode (contoh: Total tagihan Rp 135.000 dibayar Tunai Rp 50.000 dan sisanya Rp 85.000 via QRIS).
+  * Pilihan metode per baris: Tunai (CASH), QRIS, Transfer Bank, Debit EDC, dan Kasbon/Tempo.
+  * Tombol "+ Tambah Baris": Kasir dapat menambah baris pembayaran sesuai keinginan. Sisa tagihan otomatis dikalkulasikan pada baris baru.
+  * Live Calculation: Kotak ringkasan otomatis memvalidasi nominal alokasi: "Kurang Rp ..." (merah) jika alokasi belum cukup, atau "✓ Pas / Kembalian Tunai" (hijau) jika pembayaran terpenuhi.
+  * Thermal Struk: Struk kasir mencetak rincian seluruh metode pembayaran campuran secara transparan.
+- Kasbon / Pembayaran Tempo Pelanggan (Credit & Receivables):
+  * Cara Menggunakan: Pada dialog checkout kasir (Hotkeys: F8), tekan opsi "KASBON".
+  * Hak Istimewa Pelanggan Terdaftar: Fitur ini diproteksi ketat hanya untuk pelanggan yang terdaftar (member). Jika belum memilih pelanggan, sistem memandu kasir untuk memilih dari daftar atau menekan "+ Baru" tanpa menutup keranjang.
+  * Tanggal Jatuh Tempo: Kasir memasukkan tanggal jatuh tempo pelunasan (otomatis default: +14 hari ke depan).
+  * Dukungan Uang Muka (DP): Kasir dapat menginput nominal uang muka / DP (via Tunai, QRIS, Transfer, atau Debit) dan sisanya otomatis dicatat sebagai saldo Kasbon/Tempo.
+  * Integritas Transaksional: Transaksi berstatus COMPLETED (stok barang dipotong secara aman via Pessimistic Lock), sedangkan baris pembayaran bertempo berstatus UNPAID (atau PARTIAL).
+  * Struk Kasbon: Struk kasir thermal otomatis menampilkan status tegas "STATUS: KASBON / TEMPO (BELUM LUNAS)" beserta tanggal jatuh tempo penagihannya.
+- Diskon Global Nota & Kode Voucher Promosi [KLASTER 3]:
+  * Lokasi: Panel Keranjang Belanja sisi kanan kasir -> Section "Diskon & Voucher Nota".
+  * Tombol Kelola: Tekan tombol "+ Tambah Diskon" / "Kelola Diskon" untuk membuka accordion kontrol.
+  * Input Diskon Nota:
+    1. Pilih mode nominal: Tekan tombol "Rp" (Rupiah) atau "%" (Persentase).
+    2. Masukkan angka pada kotak input (contoh: 10 untuk 10%, atau 15000 untuk Rp 15.000).
+    3. Kasir juga dapat langsung menekan tombol preset instan:
+       - Preset Persen: [5%], [10%], [15%], [20%].
+       - Preset Rupiah: [5k], [10k], [20k], [50k].
+    4. Tekan tombol "Terapkan" atau tekan [Enter]. Badge merah akan muncul mengonfirmasi nominal hemat.
+    5. Untuk membatalkan diskon nota, cukup tekan ikon silang (X) pada badge.
+  * Input Kode Voucher Promosi:
+    1. Ketik kode voucher pada kolom input (contoh: HEMAT10, GRANDOPENING, MEMBER5, DISKON25K). Huruf otomatis dikapitalisasi.
+    2. Atau langsung klik salah satu pill rekomendasi voucher aktif di bawah form input.
+    3. Tekan tombol "Pakai" atau tekan [Enter].
+    4. Validasi Otomatis:
+       - Jika belanja mencukupi: Muncul badge emerald dengan notifikasi audio beep: "Voucher HEMAT10: Promo Hemat 10% (-Rp ...)" dan total bayar berkurang seketika.
+       - Jika belanja belum mencapai syarat: Muncul peringatan jelas (contoh: "Minimal belanja untuk voucher ini adalah Rp 100.000 (Subtotal saat ini: Rp 72.000)").
+    5. Untuk membatalkan voucher, tekan ikon silang (X) pada badge voucher hijau.
+  * Transparansi Rincian Pembayaran:
+    - Di layar kasir & dialog pembayaran checkout: Disajikan Subtotal Produk, Diskon Produk, Diskon Nota, Voucher Promo, Pajak, dan Total Tagihan Akhir.
+    - Di Struk Thermal Kasir: Tercetak baris rincian khusus "Diskon Nota (X%): -Rp ..." dan "Voucher (KODE): -Rp ..." secara rapi dan transparan.
+- Bukti Transaksi:
+  * Transaksi yang berhasil akan langsung memunculkan "ReceiptModal" thermal printer
+    yang siap dicetak via printer kasir (ESC/POS).
+
+10.2. RIWAYAT PENJUALAN, CETAK ULANG STRUK & REFUND TRANSAKSI
+-------------------------------------------------------------
+- Lokasi Menu : Sidebar -> "Riwayat Transaksi" (Akses: Semua Role).
+- Filter & Pencarian:
+  * Tombol filter status: Semua, COMPLETED (Sukses), REFUNDED (Retur), DRAFT (Parkir).
+  * Kolom pencarian realtime berdasarkan Nomor Transaksi (TRX-...), Pelanggan, atau Kasir.
+  * Ringkasan KPI di atas tabel: Total Omset Bersih, Jumlah Transaksi, Total Refund.
+- Cetak Ulang Struk (Reprint Receipt):
+  * Tekan tombol "Struk" pada baris transaksi yang diinginkan.
+  * Dialog pratinjau struk thermal kasir akan terbuka. Tekan "Cetak Struk Thermal"
+    untuk mengirimkan perintah cetak ulang ke printer.
+- Detail Item Transaksi:
+  * Tekan tombol "Item" untuk melihat rincian produk, varian, kuantitas, harga,
+    diskon, dan PPN yang dibayar oleh pelanggan.
+- Eksekusi Refund Transaksi (Khusus Owner & Manager):
+  * Tekan tombol "Refund" pada transaksi berstatus COMPLETED.
+  * Masukkan alasan retur (contoh: "Barang rusak / salah beli").
+  * Tekan "Eksekusi Refund".
+  * Sistem Backend secara atomik menggunakan Pessimistic Locking (`SELECT FOR UPDATE`)
+    untuk mengembalikan seluruh stok barang pada transaksi tersebut ke inventaris outlet,
+    mengubah status pembayaran dan transaksi menjadi REFUNDED, serta mencatat log audit.
+
+10.3. KATALOG PRODUK, MANAJEMEN VARIAN & PENETAPAN HARGA MULTI-CABANG
+---------------------------------------------------------------------
+- Lokasi Menu : Sidebar -> "Produk & Harga" (Akses: Manager, Owner).
+- Tambah Produk Baru:
+  * Tekan tombol "+ Tambah Produk Baru".
+  * Masukkan SKU unik, Barcode pemindai (opsional), Nama Produk, Deskripsi,
+    Kategori, Satuan Unit, Harga Modal (Beli), dan Harga Jual standar.
+- Kelola Varian Produk (SKU Varian):
+  * Tekan tombol "Varian (X)" pada baris produk yang diinginkan.
+  * Modal akan menampilkan seluruh varian terdaftar dan stoknya.
+  * Untuk menambah varian baru, isi form SKU Varian (contoh: KOP-01-L) dan Nama Varian
+    (contoh: "Size Large"), lalu tekan "Simpan Varian".
+- Penetapan Harga Bertingkat per Cabang & Audit Trail (price_history):
+  * Tekan tombol "Atur Harga".
+  * Kasir/Manager dapat mengatur Harga Jual Cabang, Harga Modal Cabang, Diskon (%),
+    dan Pajak PPN (%) khusus untuk cabang yang sedang aktif.
+  * Riwayat perubahan harga sebelumnya secara otomatis dimuat di bagian bawah modal
+    dari tabel `price_history`, memperlihatkan waktu perubahan, harga jual lama/baru,
+    harga beli, dan persentase diskon/pajak.
+
+10.4. MASTER DATA MANDIRI (KATEGORI HIERARKI, SATUAN UNIT & GUDANG PUSAT)
+-------------------------------------------------------------------------
+- Lokasi Menu :
+  * Tombol "Kategori Master" & "Satuan (Unit)" di halaman "Produk & Harga".
+  * Tombol "Tambah Gudang" di halaman "Stok & Gudang".
+- Kategori Hierarki (Induk & Subkategori):
+  * Tekan tombol "Kategori Master".
+  * Masukkan Kode Kategori (contoh: BEV) dan Nama Kategori (contoh: Minuman).
+  * Jika kategori merupakan turunan, pilih "Induk Kategori" (contoh: Kopi Dingin
+    berinduk ke Minuman).
+- Satuan Unit (Konversi / Size):
+  * Tekan tombol "Satuan (Unit)".
+  * Masukkan Kode Satuan (contoh: PCS, KG, LTR, CUP, BOX) dan Nilai Ukuran / Size.
+- Gudang Logistik Baru (Storage):
+  * Masukkan Kode Gudang (contoh: WH-02) dan Nama Gudang (contoh: Gudang Transit).
+  * Gudang yang didaftarkan akan langsung muncul pada pilihan transfer mutasi stok.
+
+10.5. MANAJEMEN STOK MULTI-LOKASI, MUTASI ATOMIK & AUDIT KARTU STOK
+-------------------------------------------------------------------
+- Lokasi Menu : Sidebar -> "Stok & Gudang" (Akses: Manager, Owner).
+- Peringatan Stok Menipis (Low Stock Alert):
+  * Banner berwarna amber akan otomatis muncul di bagian atas jika ada produk yang
+    stoknya berada di bawah atau sama dengan batas minimal (minimum stock).
+- Mutasi Transfer Gudang ke Cabang (Atomic Transfer):
+  * Tekan tombol "Transfer Gudang ➔ Cabang".
+  * Pilih Gudang Asal, Produk, Varian (jika ada), Kuantitas, dan Keterangan.
+  * Tekan "Eksekusi Mutasi Atomik". Sistem akan memotong stok gudang dan menambah
+    stok cabang dalam satu transaksi database terpadu (`@Transactional`).
+- Penerimaan Barang Masuk Supplier (Purchase):
+  * Tekan tombol "Barang Masuk (Supplier)".
+  * Pilih Gudang Penyimpanan, Produk, Varian, Jumlah Masuk, dan Catatan No. PO.
+- Penyesuaian Stok Fisik / Stock Opname (Adjustment):
+  * Tekan tombol "Penyesuaian Stok".
+  * Pilih Produk, Varian, masukkan Kuantitas Fisik Aktual yang dihitung di toko,
+    serta alasan selisih (misal: "Barang pecah / kedaluwarsa").
+- Audit Mutasi Stok (Kartu Stok Elektronik):
+  * Tekan tombol "Audit Mutasi" pada baris barang di tabel stok cabang atau gudang.
+  * Modal akan menampilkan riwayat lengkap seluruh mutasi barang (SALE, PURCHASE,
+    TRANSFER, ADJUSTMENT) lengkap dengan cap waktu, delta (+/-), stok akhir, dan keterangan.
+
+10.6. KONTROL SHIFT KASIR, KAS KECIL (PETTY CASH) & REKONSILIASI FISIK KAS LACI
+---------------------------------------------------------------------------------
+- Lokasi Menu :
+  * Tombol "Kas Masuk / Keluar" di Navbar Kasir (Akses cepat 1-klik tanpa meninggalkan layar kasir).
+  * Tombol icon kas di samping pilihan pelanggan pada panel keranjang kasir POS.
+  * Halaman Manajemen Shift (Sidebar -> "Riwayat Shift").
+- Buka Shift (Start Cash):
+  * Kasir wajib memasukkan modal uang kas kecil awal di laci (contoh: Rp 200.000).
+  * Sistem mengaktifkan sesi kerja kasir dan mencatat status shift "OPEN".
+- Pencatatan Kas Keluar (Cash Out / Petty Cash):
+  * Klik tombol "Kas Masuk/Keluar" di navbar atau tombol di keranjang kasir.
+  * Pilih tab "Kas Keluar (Cash Out)".
+  * Masukkan nominal uang yang dikeluarkan (contoh: Rp 25.000) atau klik tombol chip cepat (+10k, +20k, +50k).
+  * Pilih Kategori Biaya: "Operasional (Kresek, Lakban, ATK)", "Bahan Baku (Es Batu, Air Galon, Gas)",
+    "Kurir & Ekspedisi (COD / Ongkir)", "Konsumsi Karyawan", atau "Lainnya".
+  * Isi Catatan Keterangan: Contoh "Beli es batu kristal 2 kantong darurat karena habis".
+  * Tekan tombol "Simpan Kas Keluar". Sistem langsung memotong nilai estimasi laci kasir secara realtime.
+- Pencatatan Kas Masuk (Cash In / Suntikan Kas):
+  * Klik tombol "Kas Masuk/Keluar".
+  * Pilih tab "Kas Masuk (Cash In)".
+  * Masukkan nominal uang yang dimasukkan (contoh: Rp 100.000).
+  * Pilih Kategori: "Tambah Modal Kembalian (Dari Owner)", "Suntikan Kas Kasir", "Pendapatan Lain-lain".
+  * Isi Catatan Keterangan: Contoh "Suntikan receh 2.000-an dan 5.000-an dari Pak Budi".
+  * Tekan tombol "Simpan Kas Masuk". Sistem langsung menambah nilai estimasi laci kasir.
+- Proteksi Anti-Overdraft (Pencegahan Kas Minus):
+  * Sistem otomatis memantau saldo uang kas di laci secara live.
+  * Jika kasir menginput pengeluaran yang melebihi uang kas laci saat ini, sistem langsung
+    menolak dan menampilkan peringatan: "Uang kas di laci tidak mencukupi untuk pengeluaran ini!".
+- Tutup Shift & Cetak Struk Rekap (Z-Report):
+  * Di akhir jam kerja, kasir menekan tombol "Shift Buka ... • Tutup Shift" di navbar atau tombol "Tutup Shift" di halaman shift.
+  * Dialog penutupan shift menampilkan rincian transparan:
+    * Modal Awal: Rp 200.000
+    * (+) Penjualan Tunai: +Rp 500.000
+    * (+) Kas Masuk (Suntik Modal): +Rp 100.000
+    * (-) Kas Keluar (Petty Cash): -Rp 25.000
+    * (=) Estimasi Fisik Laci: Rp 775.000
+  * Kasir menghitung fisik uang tunai di laci dan mengetikkan Rp 775.000.
+  * Sistem mendeteksi selisih Rp 0 ("Kas Cocok / Seimbang").
+  * Kasir menekan tombol "Tutup Shift & Cetak Z-Report".
+  * Dialog struk thermal Z-Report otomatis muncul dengan efek visual konfeti keberhasilan.
+  * Tekan tombol "Cetak Struk Rekap (Z-Report)" untuk mencetak struk kasir melalui printer thermal (58mm/80mm).
+  * Struk ditandatangani oleh Kasir dan Manajer Toko, kemudian dimasukkan ke dalam amplop setoran uang fisik bank.
+- Cetak Pembacaan Kas Sementara (X-Report):
+  * Kasir atau Supervisor dapat sewaktu-waktu mencetak struk pembacaan kas sementara saat shift masih berjalan.
+  * Tekan tombol "Cetak X-Report" pada dialog Tutup Shift atau pada banner Shift Aktif di halaman "Riwayat Shift".
+- Cetak Ulang Struk Rekap Shift Lalu (Reprint Z-Report):
+  * Di halaman "Riwayat Shift" (Sidebar -> "Riwayat Shift"), setiap baris sesi shift kasir dilengkapi tombol "Cetak".
+  * Kasir atau Manajer dapat mencetak ulang struk Z-Report sesi shift kapan pun dibutuhkan untuk keperluan audit dan arsip.
+- Audit & Rincian Shift (Riwayat Shift):
+  * Di halaman "Riwayat Shift", owner dan manajer dapat melihat kolom "KAS MASUK" dan "KAS KELUAR".
+  * Tekan tombol "Rincian" pada baris shift untuk melihat rekap lengkap ringkasan finansial dan
+    seluruh daftar mutasi kas kecil shift tersebut (siapa yang mencatat, jam berapa, kategori, dan nominal),
+    serta terdapat tombol langsung "Cetak Struk Rekap" di dalam modal rincian tersebut.
+
+10.7. MANAJEMEN PELANGGAN (CRM) & KONTROL PIUTANG / KASBON
+-----------------------------------------------------------
+- Lokasi Menu : Sidebar -> "Data Pelanggan" (Akses: Semua Role).
+- Fitur & Manajemen Piutang:
+  * Mendaftarkan nama pelanggan, nomor WhatsApp/HP, dan email.
+  * Ringkasan KPI Finansial di atas tabel: Total Pelanggan, Total Kasbon / Piutang Toko, dan Jumlah Pelanggan yang Belum Lunas.
+  * Kolom "STATUS PIUTANG / KASBON": Menampilkan badge warna merah terang nominal kasbon aktif dan jumlah nota belum lunas (contoh: "Rp 150.000 • 2 nota kasbon"), atau badge hijau "Rp 0 (Lunas)".
+  * Pelanggan yang terdaftar otomatis dapat dicari di layar kasir POS.
+- Prosedur Operasional Catat Pelunasan Kasbon (Settle Customer Debt):
+  1. Pada halaman "Data Pelanggan", klik tombol "Catat Pelunasan" (tombol hijau) pada baris pelanggan yang memiliki saldo kasbon aktif.
+  2. Modal Pelunasan menampilkan rekap total piutang dan daftar nota kasbon pelanggan (Nomor Nota TRX, Tanggal Transaksi, Tanggal Jatuh Tempo, dan Sisa Piutang). Peringatan "(Lewat!)" muncul secara otomatis jika tanggal jatuh tempo sudah terlewati.
+  3. Kasir dapat memilih nota spesifik yang ingin dilunasi atau menggunakan mode otomatis "FIFO" (First In First Out / nota tertua dilunasi terlebih dahulu).
+  4. Masukkan nominal pembayaran (tersedia tombol cepat "Lunasi Penuh" atau bayar cicilan sebagian).
+  5. Pilih metode pembayaran pelunasan: Tunai (CASH), QRIS, Transfer Bank, atau Debit EDC.
+  6. Tambahkan catatan pelunasan (opsional, misal: "Titip bayar via transfer Mandiri").
+  7. Klik "Simpan Pelunasan Kasbon".
+- Sinkronisasi Otomatis Kas Laci Kasir (Cash Drawer & Cash In Auto-Sync):
+  * Jika kasbon dilunasi secara TUNAI (CASH) dan staf kasir sedang membuka sesi shift aktif, sistem secara otomatis mencatat mutasi `CashMovement` tipe `CASH_IN` kategori "Pelunasan Kasbon".
+  * Saldo fisik laci kasir dan `expectedCash` di sistem shift bertambah secara otomatis dan presisi, sehingga saat kasir tutup shift, uang fisik laci tetap seimbang dengan selisih Rp 0.
+
+10.8. PENGELOLAAN MULTI-CABANG & MANAJEMEN AKUN STAF/KASIR
+----------------------------------------------------------
+- Lokasi Menu : Sidebar -> "Cabang & Staf" (Akses: Manager, Owner).
+- Pengelolaan Cabang Outlet:
+  * Owner dapat menambah cabang toko baru (Nama Outlet, Alamat, Kontak Manajer).
+  * Navbar atas memiliki dropdown untuk berpindah antar cabang secara realtime.
+- Manajemen Pengguna (Staf Karyawan):
+  * Tambah akun kasir atau manajer cabang baru (Nama, Email, Password, Cabang Penugasan).
+  * Toggle status aktif / non-aktifkan staf seketika jika karyawan berhenti.
+  * Reset password karyawan langsung dari panel manajerial.
+
+10.9. LAPORAN OMSET, LABA KOTOR (GROSS PROFIT) & ANALISA MARGIN
+---------------------------------------------------------------
+- Lokasi Menu : Sidebar -> "Laporan & Omset" (Akses: Manager, Owner).
+- Laporan Penjualan (Sales Report):
+  * Menampilkan grafik tren omset, metode pembayaran terpopuler, dan volume transaksi.
+- Laporan Laba Kotor (Gross Profit):
+  * Menghitung Omset Bersih, Harga Pokok Penjualan (HPP / Base Cost), Laba Kotor,
+    serta Margin Profit Bersih dalam persentase secara realtime dari data transaksi.
+
+10.10. PENGATURAN IDENTITAS TOKO & KUSTOMISASI STRUK THERMAL (58MM & 80MM)
+--------------------------------------------------------------------------
+- Lokasi Menu : Sidebar -> "Pengaturan Struk" (Akses: Outlet Manager, Tenant Owner).
+- Panduan Langkah demi Langkah (Step-by-Step Operator & Admin Guide):
+  1. Masuk ke menu "Pengaturan Struk" di sidebar kiri.
+  2. Memilih Format Printer Thermal:
+     * Klik kartu "58 mm": Jika kasir menggunakan printer bluetooth mini atau printer kasir portable USB.
+     * Klik kartu "80 mm": Jika kasir menggunakan printer desktop ritel besar (Epson TM-T82, Janz, Matrix Point).
+  3. Mengatur Logo Struk Toko:
+     * Pastikan centang "Tampilkan Logo" aktif.
+     * Klik tombol "Unggah Logo (File)" untuk memilih gambar logo dari komputer (PNG/JPG maksimal 2MB).
+     * Gambar otomatis dikonversi dan ditampilkan pada pratinjau struk di panel sebelah kanan.
+     * Jika ingin menghapus logo, cukup klik tombol merah "Hapus".
+  4. Mengisi Identitas & Kontak Toko:
+     * Masukkan "Nama Toko / Bisnis" (wajib).
+     * Masukkan "Alamat Lengkap Outlet" (wajib).
+     * Masukkan "No. Telepon / WhatsApp" dan "Akun Instagram" toko.
+     * Berikan centang "Tampilkan Kontak & Media Sosial di Struk".
+  5. Mengatur Catatan Kaki Struk (Footer Note):
+     * Kasir/Manajer dapat mengetik pesan khusus di textarea "Catatan Kaki Struk".
+     * Tersedia tombol template cepat sekali klik:
+       - [Standar Ritel]: "Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan. Terima kasih atas kunjungan Anda!"
+       - [Garansi Retur]: "Simpan struk ini sebagai bukti pembayaran sah. Garansi tukar produk cacat pabrik maksimal 1x24 jam."
+       - [F&B / Kafe]: "Selamat menikmati hidangan kami! Kritik, saran, & pesanan catering hubungi WhatsApp kami."
+  6. Uji Coba Printer Fisik (Tes Cetak):
+     * Klik tombol "Tes Cetak Sampel" di bagian atas halaman.
+     * Kotak dialog cetak printer bawaan browser akan terbuka.
+     * Pastikan printer thermal kasir Anda terpilih, lalu tekan Print.
+     * Verifikasi hasil cetak fisik pada kertas thermal: teks tidak terpotong dan logo tercetak jelas.
+  7. Menyimpan Pengaturan:
+     * Klik tombol hijau "Simpan Perubahan".
+     * Muncul pesan konfirmasi: "Pengaturan struk dan identitas toko berhasil disimpan!".
+     * Seluruh kasir di outlet terkait akan langsung mencetak struk dengan identitas baru tersebut tanpa perlu restart aplikasi.
+  8. Penggunaan di Layar Kasir POS:
+     * Setelah setiap transaksi selesai di kasir POS, dialog struk ("ReceiptModal") otomatis memuat
+       logo, nama toko, alamat, kontak, dan footer baru yang telah diatur.
+     * Kasir juga dapat mengubah ukuran kertas (58mm / 80mm) secara on-the-fly melalui toggle bar
+       di bagian atas struk kasir sebelum menekan tombol "Cetak Struk Thermal".
+
+10.11. EKSPOR LAPORAN FINANSIAL, JURNAL TRANSAKSI & REKAP SHIFT (EXCEL & PDF)
+-----------------------------------------------------------------------------
+- Lokasi Menu :
+  * Sidebar -> "Laporan & Omset" (Akses: Manager, Owner)
+  * Sidebar -> "Riwayat Transaksi" (Akses: Semua Role)
+  * Sidebar -> "Riwayat Shift" (Akses: Semua Role)
+- Panduan Langkah demi Langkah (Step-by-Step Operator & Accountant Guide):
+  1. Ekspor Laporan Kinerja Omset & Margin COGS:
+     * Masuk ke menu "Laporan & Omset".
+     * Pilih periode pelaporan: Klik tombol chip cepat [Hari Ini], [7 Hari Terakhir], [30 Hari Terakhir],
+       [Bulan Ini], atau tentukan tanggal mulai dan akhir pada kotak kalender input tanggal.
+     * Mengunduh Excel: Klik tombol "Download Excel". File `.xlsx` multi-sheet akan langsung terunduh ke komputer
+       (memuat Sheet 1: Ringkasan Finansial, Sheet 2: Margin COGS Produk, Sheet 3: Audit Transaksi).
+     * Mencetak / Menyimpan PDF: Klik tombol "Cetak Laporan PDF". Modal pratinjau A4 dokumen resmi akan terbuka.
+       Periksa ringkasan KPI dan tabel margin produk, lalu klik "Cetak / Simpan PDF" (pilih opsi "Save as PDF"
+       atau printer kertas A4 pada dialog browser).
+  2. Ekspor Buku Jurnal Penjualan (Sales Journal):
+     * Masuk ke menu "Riwayat Transaksi".
+     * Filter transaksi sesuai kebutuhan (menggunakan kotak pencarian nama pelanggan/kasir atau filter status).
+     * Klik tombol "Download Excel" untuk mengunduh rekap transaksi dalam format tabel Excel berkolom lengkap.
+     * Klik tombol "Cetak Laporan PDF" untuk melihat pratinjau Buku Jurnal Penjualan resmi berformat Letter/A4
+       lengkap dengan kolom tanda tangan pengesahan kasir dan manajer.
+  3. Ekspor Rekonsiliasi Kas Shift Kasir (Cash Drawer Accountability):
+     * Masuk ke menu "Riwayat Shift".
+     * Klik tombol "Download Excel" untuk mengunduh seluruh histori sesi shift, modal awal, kas kecil, dan rekonsiliasi fisik laci kasir.
+     * Klik tombol "Cetak Laporan PDF" untuk mencetak dokumen pertanggungjawaban kasir fisik untuk arsip kantor / akuntan.
+
+
+
+10.12. MANAJEMEN MASTER SUPPLIER & PENCATATAN PURCHASE ORDER BARANG MASUK
+-----------------------------------------------------------------------------
+- Lokasi Menu : Sidebar -> "Inventaris & Stok" (Akses: Outlet Manager, Tenant Owner)
+- Tombol Aksi :
+  * [Master Supplier]: Membuka modal direktori mitra vendor.
+  * [Barang Masuk (Supplier)]: Membuka form penerimaan barang & purchase order.
+- Panduan Langkah demi Langkah (Step-by-Step Operator Guide):
+  1. Menambah & Mengelola Data Mitra Vendor / Supplier:
+     * Klik tombol "Master Supplier (X)" pada header halaman Inventaris.
+     * Klik tombol "+ Tambah Supplier" di pojok kanan atas modal.
+     * Isi formulir:
+       - Nama Perusahaan / Toko Vendor (wajib, misal: PT. Sumber Makmur Abadi).
+       - Nama Kontak Sales / PIC (misal: Pak Joko).
+       - Nomor Telepon / WhatsApp & Email.
+       - Alamat Gudang / Kantor Pengiriman.
+       - Termin Pembayaran: Pilih salah satu [COD], [Tempo 7 Hari], [Tempo 14 Hari],
+         [Tempo 30 Hari (Bulanan)], atau [Tempo Khusus].
+       - Catatan Tambahan (misal: "Minimal order 10 karton").
+     * Klik "Daftarkan Supplier". Supplier baru langsung tersimpan dan aktif.
+     * Pengguna dapat mengubah data (ikon pensil), mengubah status aktif/nonaktif (klik badge status),
+       atau menghapus vendor (ikon tong sampah).
+  2. Melakukan Penerimaan Barang Masuk (Purchase Order):
+     * Klik tombol hijau "Barang Masuk (Supplier)".
+     * Pilih "Lokasi Gudang Masuk" (misal: Gudang Transit Utama atau Gudang Toko).
+     * Pilih "Vendor / Supplier" dari daftar dropdown (tersedia tombol cepat "+ Supplier Baru"
+       jika vendor belum terdaftar).
+     * Pilih "Produk Yang Diterima" dan "Varian" (jika produk memiliki varian ukuran/rasa).
+     * Sistem secara otomatis mendeteksi dan menampilkan harga beli modal terakhir:
+       - Muncul baris info: "Harga Terakhir: Rp 12.000".
+     * Masukkan "Kuantitas Masuk" dan "Harga Beli Modal / Unit (Rp)".
+     * Perhatikan badge analisis fluktuasi harga:
+       - Jika harga baru lebih tinggi dari sebelumnya, muncul indikator merah:
+         "▲ Naik +Rp 1.000 (+8.3%)".
+       - Jika harga baru lebih murah, muncul indikator hijau:
+         "▼ Turun -Rp 500 (-4.2%) Lebih Hemat".
+     * Sistem langsung mengkalkulasi "Total Estimasi Nilai Pengadaan (Rp)" secara otomatis
+       (Kuantitas x Harga Satuan).
+     * Masukkan "No. Faktur / Invoice Supplier" (misal: INV-2026/099) dan "Catatan PO".
+     * Klik tombol "Simpan Barang Masuk & PO".
+     * Hasil Transaksi:
+       - Stok barang di gudang otomatis bertambah.
+       - Dokumen Purchase Order tercatat dengan nomor PO unik (`PO-YYYYMMDD-XXXX`).
+       - Master harga beli modal produk diperbarui.
+       - Audit mutasi kartu stok mencatat histori penerimaan lengkap dengan nama supplier dan invoice.
+
+10.13. GENERATOR CETAK LABEL BARCODE CODE 128 & PRICE TAG RAK MINIMARKET
+-----------------------------------------------------------------------------
+- Lokasi Menu : Sidebar -> "Katalog & Produk" (Akses: Semua Role)
+- Tombol Aksi :
+  * [Cetak Barcode / Price Tag] di header: Cetak massal banyak produk.
+  * [Label] di setiap baris tabel produk: Cetak cepat label untuk produk tunggal tersebut.
+- Panduan Langkah demi Langkah (Step-by-Step Operator Guide):
+  1. Membuka Generator Barcode:
+     * Masuk ke menu "Katalog & Produk".
+     * Klik tombol "Cetak Barcode / Price Tag" di header (atau tombol "Label" pada produk tertentu).
+     * Modal Generator Barcode interaktif akan terbuka.
+  2. Memilih Template Label yang Diinginkan:
+     * Pilih salah satu dari 3 template yang tersedia di panel kiri:
+       - [Price Tag Rak Minimarket (60 x 40 mm)]: Format standar minimarket dengan nama toko,
+         nama barang, satuan/kategori, harga ritel besar mencolok, dan barcode garis Code 128.
+       - [Stiker Barcode Produk (40 x 30 mm)]: Ukuran kompak untuk ditempel langsung di kemasan produk.
+       - [Lembar Kertas A4 (Grid Stiker)]: Format stiker multi-label Tom & Jerry untuk printer biasa.
+  3. Mengatur Identitas Toko & Jumlah Label:
+     * Masukkan "Header Toko Pada Label" (misal: "ZONA MART" atau nama outlet Anda).
+     * Pada daftar produk di panel kiri, centang produk yang ingin dicetak.
+     * Atur kolom "Jml" untuk setiap produk (misal: cetak 5 lembar untuk produk yang baru datang).
+     * Tersedia tombol "Pilih Semua" untuk mencetak label seluruh katalog toko sekaligus.
+  4. Pratinjau Interaktif (WYSIWYG Preview):
+     * Panel sebelah kanan menampilkan pratinjau lembar stiker secara presisi dan realtime.
+     * Barcode digambar dalam format vektor SVG tajam dengan teks SKU di bawahnya.
+  5. Menjalankan Pencetakan:
+     * Klik tombol "Cetak Label Sekarang".
+     * Dialog cetak bawaan browser akan muncul:
+       - Jika menggunakan Thermal Barcode Printer (Xprinter, Postek, Zebra): Atur ukuran kertas
+         ke ukuran label Anda (60x40mm atau 40x30mm) dan margin ke "None".
+       - Jika menggunakan Printer A4: Pilih kertas A4 portrait.
+     * Tekan tombol "Print".
+     * Stiker label dan price tag siap ditempel di rak etalase minimarket toko Anda!
+
+10.14. MANAJEMEN PROMOSI & VOUCHER DISKON (KUPON PROMO TOKO)
+-----------------------------------------------------------------------------
+- Lokasi Menu : Sidebar -> "Promo & Voucher" (Akses: Outlet Manager, Tenant Owner)
+- Komponen UI : PromotionsPage.jsx
+- Endpoint REST API Terkait:
+  * GET /api/v1/promotions/all: Mengambil semua daftar kupon promosi milik tenant bisnis.
+  * POST /api/v1/promotions: Membuat kupon promo baru dengan validasi fail-fast.
+  * PUT /api/v1/promotions/{id}: Mengubah konfigurasi diskon, plafon, kuota, atau masa berlaku kupon.
+  * DELETE /api/v1/promotions/{id}: Menghapus kupon promo dari database toko.
+  * PATCH /api/v1/promotions/{id}/toggle-status: Mengubah status aktif/non-aktif secara instan (1-klik).
+  * GET /api/v1/promotions?outletId=X: Mengambil kupon aktif yang siap digunakan oleh kasir POS.
+  * POST /api/v1/promotions/validate: Memvalidasi kelayakan kupon terhadap subtotal belanja kasir.
+
+- Fitur-Fitur Utama Modul:
+  1. Ringkasan KPI Eksekutif (4 Kartu Metrik):
+     * Total Voucher Promo: Menghitung total semua kupon dalam basis data tenant.
+     * Kupon Aktif Berjalan: Kupon yang berstatus aktif, belum kedaluwarsa, dan kuota masih tersedia.
+     * Total Digunakan (Klaim): Akumulasi jumlah transaksi penjualan yang telah sukses menikmati diskon voucher.
+     * Habis Kuota / Kedaluwarsa: Kupon yang sudah tidak dapat dipakai lagi oleh kasir.
+  2. Mode Tampilan Ganda (Dual View Mode):
+     * Tampilan Kartu Voucher (Voucher Cards): Desain tiket voucher dengan aksen border putus-putus,
+       notch lingkaran di tepi kartu, tombol salin kode cepat, informasi diskon, syarat belanja,
+       visual progress bar pemakaian kuota, dan sakelar instan.
+     * Tampilan Tabel Rinci (Detailed Table): Tampilan tabel padat untuk memonitor puluhan kupon sekaligus
+       lengkap dengan kolom kode, nama promo, target cabang, persentase/nominal diskon, min. belanja,
+       rasio kuota, masa berlaku, status badge, sakelar toggle, dan tombol aksi.
+  3. Pemfilteran & Pencarian Multidimensi:
+     * Pencarian real-time berdasarkan kode kupon (misal: "HEMAT", "GAJIAN") atau nama promo.
+     * Filter status: Semua, Aktif Berjalan, Non-Aktif, Kedaluwarsa, Kuota Habis.
+     * Filter tipe diskon: Semua Tipe, Persentase (%), Nominal Tetap (Rp).
+     * Filter target outlet: Semua Cabang (Nasional) atau Cabang Tertentu.
+  4. Sakelar Status Instan (Instant Toggle Switch):
+     * Memungkinkan Owner/Manager menghentikan atau mengaktifkan kembali promosi dalam 1-klik tanpa
+       harus membuka formulir edit. UI diperbarui secara optimistik dengan respon instan.
+  5. Monitoring Kuota Pemakaian Transparan:
+     * Bar kuota otomatis menyesuaikan warna (Hijau: Aman, Kuning: >=80% kuota, Merah: 100% Habis).
+     * Menampilkan perbandingan angka nyata times_used dari usage_limit.
+
+- Panduan Langkah demi Langkah (Step-by-Step Operator Guide):
+  1. Membuat Kupon Promosi Toko Baru:
+     * Buka menu "Promo & Voucher" pada bilah navigasi sidebar kiri.
+     * Klik tombol hijau "+ Buat Kupon Promo" di sudut kanan atas.
+     * Modal pembuatan kupon akan muncul dengan 2 panel (Formulir Pengaturan & Live Card Preview).
+     * Masukkan "Kode Kupon Promo" (otomatis berhuruf kapital, misal: HEMAT20, DISKON50K),
+       atau klik tombol "+ Acak Kode" untuk membuat kode unik otomatis.
+     * Masukkan "Nama Promosi" (misal: "Promo Gajian Weekend Ceria").
+     * Masukkan "Deskripsi Promosi" (opsional, catatan syarat promo).
+     * Pilih "Target Cabang (Outlet)": Pilih [Semua Cabang (Nasional)] agar kupon berlaku di seluruh toko,
+       atau pilih cabang outlet spesifik jika promo merupakan program khusus cabang tertentu.
+     * Pilih "Tipe Diskon":
+       - [Persentase (%)]: Masukkan angka persen (misal: 10) dan isi "Maksimal Diskon (Plafon Rp)"
+         (misal: Rp 30.000) untuk mencegah diskon berlebih pada nota bernilai besar.
+       - [Nominal Tetap (Rp)]: Masukkan nominal potongan langsung rupiah (misal: Rp 25.000).
+     * Tentukan "Syarat Minimal Belanja Nota (Rp)" (misal: Rp 50.000, atau isi 0 jika tanpa syarat).
+     * Konfigurasi Pembatasan:
+       - Centang "Batasi Periode Masa Berlaku Promo" jika promo memiliki tanggal & jam mulai serta tanggal & jam kedaluwarsa.
+       - Centang "Batasi Kuota Jumlah Pemakaian" jika promo dibatasi untuk sejumlah pelanggan/transaksi pertama (misal: 100x klaim).
+       - Periksa sakelar "Status Promo Langsung Aktif".
+     * Perhatikan panel kanan "Pratinjau Kartu Kupon (Live Preview)" untuk memastikan tampilan kupon sudah sesuai.
+     * Klik tombol "Buat Voucher Kupon". Kupon langsung aktif dan siap digunakan kasir di meja pembayaran.
+
+  2. Mengubah atau Memperbarui Kupon Promosi:
+     * Cari kupon pada daftar menggunakan kotak pencarian atau filter status.
+     * Klik tombol "Edit" (ikon pensil).
+     * Formulir akan terisi data kupon saat ini. Lakukan penyesuaian (misal: menambah kuota pemakaian atau memperpanjang tanggal berakhir).
+     * Klik "Simpan Perubahan".
+
+  3. Mengaktifkan / Menonaktifkan Promo Seketika:
+     * Cukup klik sakelar toggle di baris tabel atau pada kartu kupon:
+       - Ikon Toggle Hijau (Kanan): Kupon aktif dan kasir dapat menerapkannya.
+       - Ikon Toggle Abu-abu (Kiri): Kupon dinonaktifkan sementara.
+
+  4. Menghapus Kupon Promosi:
+     * Klik tombol hapus (ikon tong sampah merah).
+     * Modal konfirmasi peringatan akan muncul menampilkan kode dan nama promo.
+     * Klik tombol "Ya, Hapus Kupon".
+
+  5. Alur Pemakaian di Layar Kasir POS (PosKasir.jsx):
+     * Kasir membuka transaksi penjualan seperti biasa dan memasukkan produk ke keranjang.
+     * Di panel keranjang belanja, klik menu "+ Tambah Diskon" atau "Kelola Diskon".
+     * Kasir dapat:
+       - Mengetik kode kupon yang diberikan pelanggan pada kotak "Kode Voucher Promo" lalu menekan tombol "Pakai" (atau tekan Enter).
+       - ATAU cukup klik salah satu chip tombol voucher aktif yang tersedia di bawah input tanpa perlu mengetik.
+     * Sistem memvalidasi kupon secara instan:
+       - Jika memenuhi syarat minimal belanja, voucher aktif, dan kuota tersedia: Diskon langsung memotong total belanja dan menampilkan pesan sukses berwarna hijau.
+       - Jika subtotal kurang dari minimal belanja: Sistem memberi notifikasi penolakan ramah (misal: "Minimal belanja Rp 50.000, subtotal saat ini Rp 35.000").
+     * Saat kasir menyelesaikan transaksi (Bayar), stok dipotong dan kuota pemakaian kupon (times_used) bertambah 1 secara atomik dengan perlindungan Pessimistic Locking.
+
+10.15. BUKU REGISTER & JURNAL PEMBELIAN (REKAPITULASI PURCHASE ORDER)
+-----------------------------------------------------------------------------
+- Lokasi Menu : Sidebar -> "Stok & Gudang" -> Tombol "Jurnal Pembelian (PO)"
+- Komponen UI : PurchaseOrderJournalModal.jsx (terintegrasi di InventoryPage.jsx)
+- Endpoint REST API Terkait:
+  * GET /api/v1/suppliers/purchase-orders: Mengambil seluruh histori dokumen PO belanja pengadaan dengan filter fleksibel (supplier, gudang, outlet, rentang tanggal, dan pencarian teks).
+  * GET /api/v1/suppliers: Mengambil daftar master pemasok aktif.
+  * POST /api/v1/stocks/purchase: Mencatat pengadaan barang masuk dan menerbitkan nomor PO unik (PO-YYYYMMDD-XXXX).
+
+- Fitur-Fitur Utama Modul:
+  1. Ringkasan KPI Keuangan Pengadaan (4 Metrik Utama):
+     * Total Modal Pengadaan: Akumulasi nominal rupiah uang modal yang dibelanjakan ke supplier.
+     * Total Dokumen PO: Jumlah dokumen purchase order yang pernah diterbitkan.
+     * Total Barang Masuk: Akumulasi unit kuantitas barang yang telah diterima di gudang/toko.
+     * Rata-Rata Nilai per PO: Nilai belanja rata-rata per transaksi pengadaan barang.
+  2. Filter & Pencarian Cepat Multidimensi:
+     * Pencarian instan berdasarkan No. PO (PO-...), No. Faktur/Invoice Vendor, Nama Produk, Nama Supplier, atau Catatan PO.
+     * Filter rentang tanggal cepat: [Hari Ini], [7 Hari Terakhir], [30 Hari Terakhir], [Bulan Ini], [Semua Waktu], atau Custom Date Picker.
+     * Filter Pemasok: Filter per mitra vendor/supplier spesifik.
+     * Filter Lokasi Tujuan: Filter per Gudang Logistik atau Outlet Toko penerima.
+  3. Tabel Register Jurnal Pembelian Komprehensif:
+     * No. Dokumen PO (format unik PO-YYYYMMDD-XXXX) dengan tombol salin (copy) 1-klik.
+     * Tanggal & Jam Penerimaan Barang Masuk.
+     * Nama Mitra Supplier / Vendor.
+     * Lokasi Penerima Barang (Badge Gudang Transit atau Outlet Toko).
+     * Nama Produk & Varian Rasa/Ukuran.
+     * Jumlah Kuantitas Masuk (Unit).
+     * Harga Beli Modal Satuan (Rp) & Total Biaya Pengadaan (Rp bold mencolok).
+     * No. Faktur / Invoice Eksternal Supplier.
+     * Identitas Staff / User Penerima Barang.
+  4. Modal Detail Faktur Purchase Order (Single PO Document Viewer):
+     * Menampilkan lembar dokumen Purchase Order resmi untuk transaksi tunggal.
+     * Dilengkapi rincian produk, kuantitas, harga modal, nomor faktur vendor, catatan, dan tombol cetak faktur PO satuan.
+  5. Ekspor Data Excel Universal (.xlsx via SheetJS):
+     * Mengunduh seluruh rekapitulasi jurnal pembelian ke file Excel terformat rapi untuk keperluan audit pembukuan dan akuntansi.
+  6. Cetak Rekapitulasi PO Resmi A4 (Print Engine):
+     * Pratinjau dokumen A4 resmi ber-kop surat toko, ringkasan KPI, tabel transaksi pengadaan terperinci, total biaya, dan kolom tanda tangan pengesahan ("Dibuat Oleh" & "Disetujui Oleh").
+
+- Panduan Langkah demi Langkah (Step-by-Step Operator Guide):
+  1. Membuka Buku Register & Jurnal Pembelian:
+     * Masuk ke menu "Stok & Gudang" pada navigasi sidebar kiri.
+     * Klik tombol hijau "Jurnal Pembelian (PO)" pada bilah aksi header atas.
+     * Modal Buku Register & Jurnal Pembelian akan terbuka dalam tampilan layar lebar.
+  2. Memantau & Memfilter Transaksi Pengadaan:
+     * Perhatikan 4 kartu KPI di bagian atas untuk melihat total modal yang dibelanjakan ke supplier.
+     * Gunakan tombol chip tanggal cepat (misal: klik [Bulan Ini] untuk melihat belanja bulan berjalan).
+     * Pilih supplier tertentu pada dropdown "Supplier" jika ingin mengecek riwayat belanja ke vendor tertentu.
+     * Ketik nama barang atau nomor faktur pada kotak pencarian untuk menemukan dokumen PO secara seketika.
+  3. Melihat Rincian Dokumen Faktur PO:
+     * Klik nomor PO (atau tombol "Faktur") pada baris tabel transaksi yang diinginkan.
+     * Modal lembar faktur PO resmi akan tampil memuat data vendor, lokasi penerima, harga satuan, dan catatan.
+     * Klik "Cetak Faktur PO" jika ingin mencetak bukti fisik penerimaan barang tersebut.
+  4. Mengunduh Rekapitulasi ke Excel:
+     * Pastikan filter data sudah sesuai dengan periode yang diinginkan.
+     * Klik tombol "Download Excel" di pojok kanan atas.
+     * File .xlsx otomatis terunduh ke komputer Anda dengan kolom yang terformat rapi.
+  5. Mencetak Lembar Rekapitulasi Pengadaan (A4):
+     * Klik tombol "Cetak Rekap PO".
+     * Modal pratinjau dokumen formal A4 akan muncul.
+     * Periksa tabel dan grand total biaya pengadaan, lalu klik "Cetak / Simpan PDF" pada dialog cetak browser.
+
+================================================================================
+                    AKHIR DOKUMENTASI SISTEM ZONA POS
+================================================================================
+

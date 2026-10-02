@@ -27,6 +27,7 @@ public class ProductDto {
     private String unitName;
     private Boolean isActive;
     // Pricing info for active outlet
+    private Long priceId;
     private Double sellingPrice;
     private Double purchasePrice;
     private Short discountPercentage;

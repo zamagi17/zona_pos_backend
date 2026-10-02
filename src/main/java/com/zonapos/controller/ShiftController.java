@@ -1,8 +1,6 @@
 package com.zonapos.controller;
 
-import com.zonapos.dto.CloseShiftRequest;
-import com.zonapos.dto.OpenShiftRequest;
-import com.zonapos.dto.ShiftResponse;
+import com.zonapos.dto.*;
 import com.zonapos.entity.User;
 import com.zonapos.service.ShiftService;
 import jakarta.validation.Valid;
@@ -44,5 +42,25 @@ public class ShiftController {
     @GetMapping("/outlet/{outletId}")
     public ResponseEntity<List<ShiftResponse>> getShiftsByOutlet(@PathVariable Long outletId) {
         return ResponseEntity.ok(shiftService.getShiftsByOutlet(outletId));
+    }
+
+    @PostMapping("/movements")
+    public ResponseEntity<CashMovementResponse> recordCashMovement(
+            @Valid @RequestBody CreateCashMovementRequest request,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(shiftService.recordCashMovement(request, user));
+    }
+
+    @GetMapping("/{shiftId}/movements")
+    public ResponseEntity<List<CashMovementResponse>> getCashMovements(
+            @PathVariable Long shiftId,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(shiftService.getCashMovements(shiftId, user));
+    }
+
+    @GetMapping("/active/movements")
+    public ResponseEntity<List<CashMovementResponse>> getActiveShiftMovements(
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(shiftService.getActiveShiftMovements(user));
     }
 }

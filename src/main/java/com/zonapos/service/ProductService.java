@@ -106,6 +106,7 @@ public class ProductService {
         String unitName = p.getUnitId() != null ?
                 unitRepository.findById(p.getUnitId()).map(Unit::getName).orElse(null) : null;
 
+        Long priceId = null;
         Double sellingPrice = 0.0;
         Double purchasePrice = 0.0;
         Short discountPercentage = 0;
@@ -120,6 +121,7 @@ public class ProductService {
             Optional<Price> priceOpt = priceRepository.findByProductIdAndOutletId(p.getId(), outletId);
             if (priceOpt.isPresent()) {
                 Price pr = priceOpt.get();
+                priceId = pr.getId();
                 sellingPrice = pr.getSellingPrice();
                 purchasePrice = pr.getPurchasePrice();
                 discountPercentage = pr.getDiscountPercentage();
@@ -163,6 +165,7 @@ public class ProductService {
                 .unitId(p.getUnitId())
                 .unitName(unitName)
                 .isActive(p.getIsActive())
+                .priceId(priceId)
                 .sellingPrice(sellingPrice)
                 .purchasePrice(purchasePrice)
                 .discountPercentage(discountPercentage)

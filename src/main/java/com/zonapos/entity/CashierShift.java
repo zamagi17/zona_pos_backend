@@ -35,6 +35,14 @@ public class CashierShift {
     @Builder.Default
     private Double actualCash = 0.0;
 
+    @Column(name = "total_cash_in")
+    @Builder.Default
+    private Double totalCashIn = 0.0;
+
+    @Column(name = "total_cash_out")
+    @Builder.Default
+    private Double totalCashOut = 0.0;
+
     @Column(nullable = false, length = 50)
     @Builder.Default
     private String status = "OPEN"; // OPEN, CLOSED

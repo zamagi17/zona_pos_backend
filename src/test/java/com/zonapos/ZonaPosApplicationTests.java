@@ -42,6 +42,9 @@ class ZonaPosApplicationTests {
     @Autowired
     private StockRepository stockRepository;
 
+    @Autowired
+    private com.zonapos.service.PromotionService promotionService;
+
     private static Long activeShiftId;
     private static Long completedTrxId;
 
@@ -166,5 +169,70 @@ class ZonaPosApplicationTests {
         assertNotNull(shift);
         assertEquals("CLOSED", shift.getStatus());
         assertNotNull(shift.getClosedAt());
+    }
+
+    @Test
+    @Order(8)
+    void testVoucherValidationAndPromotionService() {
+        // Test HEMAT10 with subtotal 100,000 -> 10% = 10,000
+        var validRes = promotionService.validateVoucher(1L, 1L, "HEMAT10", 100000.0);
+        assertTrue(validRes.isValid());
+        assertEquals("HEMAT10", validRes.getCode());
+        assertEquals(10000.0, validRes.getDiscountAmount());
+
+        // Test GRANDOPENING (min 100,000) with subtotal 40,000 -> should fail validation
+        var invalidRes = promotionService.validateVoucher(1L, 1L, "GRANDOPENING", 40000.0);
+        assertFalse(invalidRes.isValid());
+        assertTrue(invalidRes.getMessage().contains("Minimal belanja"));
+    }
+
+    @Test
+    @Order(9)
+    void testOrderDiscountAndVoucherCheckout() {
+        User cashier = userRepository.findByEmail("kasir@zonapos.com").orElseThrow();
+
+        // Open a new shift for testing checkout with discounts
+        OpenShiftRequest openReq = new OpenShiftRequest();
+        openReq.setOutletId(1L);
+        openReq.setStartCash(50000.0);
+        ShiftResponse shift = shiftService.openShift(openReq, cashier);
+        assertNotNull(shift);
+
+        CheckoutRequest request = new CheckoutRequest();
+        request.setOutletId(1L);
+        request.setShiftId(shift.getId());
+        request.setPaymentMethod("CASH");
+
+        CartItemDto item = CartItemDto.builder()
+                .productId(1L)
+                .productName("Kopi Susu Gula Aren")
+                .quantity(5)
+                .unitPrice(20000.0) // subtotal = 100,000
+                .basePrice(8000.0)
+                .discount(0.0)
+                .tax(0.0)
+                .subtotal(100000.0)
+                .build();
+        request.setItems(List.of(item));
+
+        // Apply Order Discount: 10% (= 10,000)
+        request.setOrderDiscountType("PERCENT");
+        request.setOrderDiscountRate(10.0);
+
+        // Apply Voucher: HEMAT10 (10% of remaining 90,000 = 9,000)
+        request.setVoucherCode("HEMAT10");
+
+        // Grand Total = 100,000 - 10,000 (order disc) - 9,000 (voucher disc) = 81,000
+        request.setAmountPaid(100000.0);
+
+        TransactionResponse trx = transactionService.checkout(request, cashier);
+        assertNotNull(trx);
+        assertEquals("COMPLETED", trx.getStatus());
+        assertEquals(100000.0, trx.getSubtotal());
+        assertEquals(10000.0, trx.getOrderDiscount());
+        assertEquals(9000.0, trx.getVoucherDiscount());
+        assertEquals(19000.0, trx.getDiscount()); // Total discount = 10,000 + 9,000
+        assertEquals(81000.0, trx.getGrandTotal());
+        assertEquals(19000.0, trx.getChangeAmount()); // 100,000 - 81,000 = 19,000
     }
 }

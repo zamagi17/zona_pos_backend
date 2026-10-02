@@ -19,4 +19,11 @@ public class HoldOrderRequest {
 
     @NotEmpty(message = "Item keranjang tidak boleh kosong untuk di-hold")
     private List<CartItemDto> items;
+
+    // Klaster 3: Diskon Global Nota & Kode Voucher Promo
+    private Double orderDiscount;
+    private String orderDiscountType;
+    private Double orderDiscountRate;
+    private String voucherCode;
+    private Double voucherDiscount;
 }

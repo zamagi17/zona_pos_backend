@@ -40,6 +40,17 @@ public class TransactionHistory {
     @Builder.Default
     private Double discount = 0.0;
 
+    @Column(name = "order_discount", nullable = false)
+    @Builder.Default
+    private Double orderDiscount = 0.0;
+
+    @Column(name = "voucher_code", length = 50)
+    private String voucherCode;
+
+    @Column(name = "voucher_discount", nullable = false)
+    @Builder.Default
+    private Double voucherDiscount = 0.0;
+
     @Column(nullable = false)
     @Builder.Default
     private Double tax = 0.0;

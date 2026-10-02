@@ -25,6 +25,9 @@ public class StockService {
     private final ProductVariantRepository productVariantRepository;
     private final OutletRepository outletRepository;
     private final StorageRepository storageRepository;
+    private final SupplierRepository supplierRepository;
+    private final PurchaseOrderRepository purchaseOrderRepository;
+    private final PriceRepository priceRepository;
 
     @Transactional
     public StockResponse adjustStock(StockAdjustmentRequest request, User currentUser) {
@@ -69,13 +72,71 @@ public class StockService {
         stock.setUpdatedBy(currentUser.getName());
         stock = stockRepository.save(stock);
 
+        // Lookup supplier name
+        String supplierName = null;
+        if (request.getSupplierId() != null) {
+            supplierName = supplierRepository.findById(request.getSupplierId())
+                    .map(Supplier::getName)
+                    .orElse(null);
+        }
+
+        double unitPurchasePrice = request.getPurchasePrice() != null ? request.getPurchasePrice() : 0.0;
+        double totalCost = unitPurchasePrice * request.getQuantity();
+
+        // 1. Record Purchase Order
+        String poNo = "PO-" + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + "-" + String.format("%04d", (int)(System.currentTimeMillis() % 10000));
+        PurchaseOrder po = PurchaseOrder.builder()
+                .poNo(poNo)
+                .tenantId(currentUser.getTenantId())
+                .supplierId(request.getSupplierId())
+                .storageId(request.getStorageId())
+                .outletId(request.getOutletId())
+                .productId(request.getProductId())
+                .variantId(request.getVariantId())
+                .quantity(request.getQuantity())
+                .purchasePrice(unitPurchasePrice)
+                .totalCost(totalCost)
+                .invoiceNo(request.getInvoiceNo())
+                .remarks(request.getRemarks())
+                .userId(currentUser.getId())
+                .build();
+        purchaseOrderRepository.save(po);
+
+        // 2. Update default purchase price in Price table if outlet is provided or for all prices of this product
+        if (unitPurchasePrice > 0) {
+            if (request.getOutletId() != null) {
+                priceRepository.findByProductIdAndOutletId(request.getProductId(), request.getOutletId())
+                        .ifPresent(p -> {
+                            p.setPurchasePrice(unitPurchasePrice);
+                            priceRepository.save(p);
+                        });
+            }
+        }
+
+        // 3. Format detailed remarks for stock history audit
+        StringBuilder remarksSb = new StringBuilder();
+        if (supplierName != null) {
+            remarksSb.append("Supplier: ").append(supplierName);
+        } else {
+            remarksSb.append("Barang masuk (Purchase)");
+        }
+        if (request.getInvoiceNo() != null && !request.getInvoiceNo().isBlank()) {
+            remarksSb.append(" (Faktur: ").append(request.getInvoiceNo().trim()).append(")");
+        }
+        if (unitPurchasePrice > 0) {
+            remarksSb.append(String.format(" @ Rp %,.0f", unitPurchasePrice));
+        }
+        if (request.getRemarks() != null && !request.getRemarks().isBlank()) {
+            remarksSb.append(" - ").append(request.getRemarks().trim());
+        }
+
         StockHistory history = StockHistory.builder()
                 .stockId(stock.getId())
                 .stockInOut(request.getQuantity())
                 .quantity(newQty)
                 .status("IN")
                 .type("PURCHASE")
-                .remarks(request.getRemarks() != null ? request.getRemarks() : "Barang masuk (Purchase)")
+                .remarks(remarksSb.toString())
                 .userId(currentUser.getId())
                 .build();
         stockHistoryRepository.save(history);

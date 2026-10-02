@@ -9,5 +9,7 @@ import java.util.List;
 @Repository
 public interface TransactionItemRepository extends JpaRepository<TransactionItem, Long> {
     List<TransactionItem> findByTrxId(Long trxId);
+    List<TransactionItem> findByTrxIdIn(List<Long> trxIds);
     void deleteByTrxId(Long trxId);
 }
+

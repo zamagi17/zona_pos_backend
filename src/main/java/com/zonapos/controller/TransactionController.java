@@ -8,6 +8,8 @@ import com.zonapos.entity.User;
 import com.zonapos.service.TransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -55,5 +57,17 @@ public class TransactionController {
     @GetMapping("/{id}")
     public ResponseEntity<TransactionResponse> getTransactionDetail(@PathVariable Long id) {
         return ResponseEntity.ok(transactionService.getTransactionDetail(id));
+    }
+
+    @GetMapping("/export/csv")
+    @PreAuthorize("hasAnyRole('TENANT_OWNER', 'OUTLET_MANAGER')")
+    public ResponseEntity<byte[]> exportTransactionsCsv(
+            @RequestParam Long outletId,
+            @RequestParam(required = false) String status) {
+        byte[] csv = transactionService.exportTransactionsCsv(outletId, status);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=transaksi_outlet_" + outletId + ".csv")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(csv);
     }
 }

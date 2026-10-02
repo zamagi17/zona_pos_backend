@@ -162,4 +162,21 @@ public class ReportService {
                 .productBreakdown(new ArrayList<>(productMap.values()))
                 .build();
     }
+
+    public byte[] exportSalesReportCsv(Long tenantId, Long outletId, LocalDateTime start, LocalDateTime end) {
+        SalesReportDto report = getSalesReport(tenantId, outletId, start, end);
+        StringBuilder sb = new StringBuilder();
+        sb.append('\uFEFF'); // UTF-8 BOM
+        sb.append("PARAMETER,NILAI\r\n");
+        sb.append("Total Transaksi,").append(report.getTotalTransactions()).append("\r\n");
+        sb.append("Total Omset Kotor,").append(report.getTotalGrossSales()).append("\r\n");
+        sb.append("Total Diskon,").append(report.getTotalDiscount()).append("\r\n");
+        sb.append("Total Pajak,").append(report.getTotalTax()).append("\r\n");
+        sb.append("Total Omset Bersih,").append(report.getTotalNetSales()).append("\r\n");
+        sb.append("Penjualan Tunai,").append(report.getTotalCashSales()).append("\r\n");
+        sb.append("Penjualan QRIS,").append(report.getTotalQrisSales()).append("\r\n");
+        sb.append("Penjualan Transfer Bank,").append(report.getTotalTransferSales()).append("\r\n");
+        sb.append("Penjualan Debit EDC,").append(report.getTotalDebitSales()).append("\r\n");
+        return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
 }

@@ -40,4 +40,17 @@ public class CustomerController {
     public ResponseEntity<List<TransactionResponse>> getCustomerTransactions(@PathVariable Long id) {
         return ResponseEntity.ok(customerService.getCustomerTransactions(id));
     }
+
+    @GetMapping("/{id}/unpaid-bills")
+    public ResponseEntity<List<com.zonapos.dto.UnpaidBillResponse>> getUnpaidBills(@PathVariable Long id) {
+        return ResponseEntity.ok(customerService.getUnpaidBills(id));
+    }
+
+    @PostMapping("/{id}/settle-debt")
+    public ResponseEntity<CustomerDto> settleDebt(
+            @PathVariable Long id,
+            @Valid @RequestBody com.zonapos.dto.SettleDebtRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(customerService.settleDebt(id, request, currentUser));
+    }
 }

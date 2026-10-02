@@ -14,5 +14,8 @@ public class StockPurchaseRequest {
     @NotNull(message = "Quantity masuk wajib diisi")
     @Min(value = 1, message = "Quantity minimal 1")
     private Long quantity;
+    private Long supplierId;
+    private Double purchasePrice;
+    private String invoiceNo;
     private String remarks;
 }

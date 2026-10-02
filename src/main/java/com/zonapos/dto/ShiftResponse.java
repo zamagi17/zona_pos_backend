@@ -21,10 +21,13 @@ public class ShiftResponse {
     private Double totalCashSales;
     private Double totalNonCashSales;
     private Integer totalTransactions;
+    private Double totalCashIn;
+    private Double totalCashOut;
     private Double expectedCash;
     private Double actualCash;
     private Double cashDifference; // actual - expected
     private String status;
     private LocalDateTime openedAt;
     private LocalDateTime closedAt;
+    private java.util.List<CashMovementResponse> cashMovements;
 }

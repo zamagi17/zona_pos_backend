@@ -38,6 +38,12 @@ public class Payment {
     @Column(length = 150)
     private String reference;
 
+    @Column(name = "due_date")
+    private LocalDateTime dueDate;
+
+    @Column(length = 255)
+    private String notes;
+
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
 

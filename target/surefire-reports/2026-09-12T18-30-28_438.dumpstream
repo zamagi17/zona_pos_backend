@@ -1,5 +1,0 @@
-# Created at 2026-09-12T18:30:28.650
-Boot Manifest-JAR contains absolute paths in classpath 'D:\Zaky\zonapos\backend\target\test-classes'
-Hint: <argLine>-Djdk.net.URLClassPath.disableClassPathURLCheck=true</argLine>
-'other' has different root
-

@@ -21,11 +21,25 @@ public class CheckoutRequest {
     @NotEmpty(message = "Keranjang belanja tidak boleh kosong")
     private List<CartItemDto> items;
 
-    @NotNull(message = "Metode pembayaran wajib diisi")
-    private String paymentMethod; // CASH, QRIS, Transfer, Debit Card
+    // Single payment mode (backward compatible)
+    private String paymentMethod; // CASH, QRIS, Transfer, Debit Card, TEMPO
 
-    @NotNull(message = "Jumlah pembayaran wajib diisi")
     private Double amountPaid;
 
     private String reference;
+
+    private String idempotencyKey;
+
+    // Split payment & Kasbon/Tempo support
+    private java.util.List<PaymentRequest> payments;
+
+    private java.time.LocalDateTime dueDate;
+
+    // Klaster 3: Diskon Global Nota & Kode Voucher Promo
+    private Double orderDiscount; // Nominal rupiah diskon nota
+    private String orderDiscountType; // PERCENT, FIXED
+    private Double orderDiscountRate; // Persentase (e.g. 10) atau nominal
+    private String voucherCode;
+    private Double voucherDiscount; // Nominal potongan voucher
 }
+
